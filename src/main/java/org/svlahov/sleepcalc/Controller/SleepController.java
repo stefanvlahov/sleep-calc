@@ -1,10 +1,6 @@
 package org.svlahov.sleepcalc.Controller;
 
-import jdk.internal.net.http.HttpClientImpl;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -16,10 +12,23 @@ import java.util.concurrent.atomic.AtomicReference;
 public class SleepController {
 
     private AtomicReference<BigDecimal> currentSleepDebt = new AtomicReference<>(BigDecimal.ZERO);
+    private static final BigDecimal TARGET_SLEEP = new BigDecimal("7.5");
 
     @GetMapping("/debt")
     public double getCurrentSleepDebt() {
         return currentSleepDebt.get().setScale(2, RoundingMode.HALF_UP).doubleValue();
+    }
+
+    public static class SleepInput {
+        private double hoursSlept;
+
+        public double getHoursSlept() {
+            return hoursSlept;
+        }
+
+        public void setHoursSlept(double hoursSlept) {
+            this.hoursSlept = hoursSlept;
+        }
     }
 
 }
