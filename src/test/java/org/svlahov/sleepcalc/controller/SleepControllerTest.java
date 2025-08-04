@@ -26,11 +26,11 @@ class SleepControllerTest {
     private ObjectMapper objectMapper;
 
     @Autowired
-    private WebApplicationContext webApplicationContext;
+    private SleepController sleepController;
 
     @BeforeEach
     public void setup() {
-        this.mockMvc = MockMvcBuilders.webAppContextSetup(this.webApplicationContext).build();
+        sleepController.reset();
     }
 
     @Test
