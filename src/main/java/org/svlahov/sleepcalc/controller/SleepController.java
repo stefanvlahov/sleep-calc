@@ -62,6 +62,10 @@ public class SleepController {
         return newDebt.setScale(2, RoundingMode.HALF_UP).doubleValue();
     }
 
+    void reset() {
+        currentSleepDebt.set(BigDecimal.ZERO);
+    }
+
     public static class SleepInput {
         private double hoursSlept;
 
