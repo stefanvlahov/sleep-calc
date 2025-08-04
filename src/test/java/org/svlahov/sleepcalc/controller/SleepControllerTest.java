@@ -1,4 +1,4 @@
-package org.svlahov.sleepcalc.Controller;
+package org.svlahov.sleepcalc.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
