@@ -1,4 +1,4 @@
-package org.svlahov.sleepcalc.Controller;
+package org.svlahov.sleepcalc.controller;
 
 import org.springframework.web.bind.annotation.*;
 
