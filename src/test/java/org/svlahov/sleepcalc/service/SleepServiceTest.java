@@ -50,7 +50,7 @@ public class SleepServiceTest {
     @Test
     @DisplayName("Should apply diminished recovery when debt is high")
     void recordSleep_whenDebtIsHigh_thenApplyDiminishedRecovery() {
-        sleepService.recordSleep(5.0);
+        sleepService.recordSleep(2.5);
 
         double newDebt = sleepService.recordSleep(9.5);
 
@@ -65,6 +65,6 @@ public class SleepServiceTest {
                 () -> sleepService.recordSleep(-1.0)
         );
 
-        assertEquals("Hours slept cannot be negative", exception.getMessage());
+        assertEquals("Hours slept cannot be negative.", exception.getMessage());
     }
 }
