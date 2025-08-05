@@ -3,10 +3,6 @@ package org.svlahov.sleepcalc.controller;
 import org.springframework.web.bind.annotation.*;
 import org.svlahov.sleepcalc.service.SleepService;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.util.concurrent.atomic.AtomicReference;
-
 @RestController
 @RequestMapping("api/sleep")
 @CrossOrigin(origins = "http://localhost:3000")
