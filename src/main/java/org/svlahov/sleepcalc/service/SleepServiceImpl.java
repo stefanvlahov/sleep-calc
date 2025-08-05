@@ -1,9 +1,12 @@
 package org.svlahov.sleepcalc.service;
 
+import org.springframework.stereotype.Service;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.concurrent.atomic.AtomicReference;
 
+@Service
 public class SleepServiceImpl implements SleepService {
 
     private final AtomicReference<BigDecimal> currentSleepDebt = new AtomicReference<>(BigDecimal.ZERO);
