@@ -9,52 +9,79 @@ import java.util.concurrent.atomic.AtomicReference;
 @Service
 public class SleepServiceImpl implements SleepService {
 
-    private final AtomicReference<BigDecimal> currentSleepDebt = new AtomicReference<>(BigDecimal.ZERO);
-    private static final BigDecimal TARGET_SLEEP = new BigDecimal("7.5");
-    private static final BigDecimal ZERO = BigDecimal.ZERO;
-    private static final BigDecimal ONE = BigDecimal.ONE;
-
+    // Sleep calculation constants
+    private static final BigDecimal TARGET_SLEEP_HOURS = new BigDecimal("7.5");
     private static final BigDecimal MAX_EFFECTIVE_DEBT = new BigDecimal("20.0");
     private static final BigDecimal MIN_RECOVERY_FACTOR = new BigDecimal("0.3");
 
+    // Common BigDecimal values
+    private static final BigDecimal ZERO = BigDecimal.ZERO;
+    private static final BigDecimal ONE = BigDecimal.ONE;
+
+    // Current state
+    private final AtomicReference<BigDecimal> currentSleepDebt = new AtomicReference<>(BigDecimal.ZERO);
+
     @Override
     public double getCurrentSleepDebt() {
-        return currentSleepDebt.get().setScale(2, RoundingMode.HALF_UP).doubleValue();
+        return formatDebtValue(currentSleepDebt.get());
     }
 
     @Override
     public double recordSleep(double hoursSleptValue) {
         BigDecimal hoursSlept = BigDecimal.valueOf(hoursSleptValue);
-        if (hoursSlept.compareTo(ZERO) < 0) {
-            throw new IllegalArgumentException("Hours slept cannot be negative.");
-        }
-
-        BigDecimal newDebt = currentSleepDebt.updateAndGet(previousDebt -> {
-            BigDecimal difference = hoursSlept.subtract(TARGET_SLEEP);
-            BigDecimal debtChange;
-
-            if (difference.compareTo(ZERO) > 0) { // Slept MORE than target
-                BigDecimal recoveryFactor;
-                if (previousDebt.compareTo(ZERO) <= 0) {
-                    recoveryFactor = ONE;
-                } else {
-                    BigDecimal debtRatio = previousDebt.divide(MAX_EFFECTIVE_DEBT, 4, RoundingMode.HALF_UP);
-                    BigDecimal factorReduction = debtRatio.multiply(ONE.subtract(MIN_RECOVERY_FACTOR));
-                    BigDecimal calculatedFactor = ONE.subtract(factorReduction);
-                    recoveryFactor = calculatedFactor.max(MIN_RECOVERY_FACTOR);
-                }
-                debtChange = difference.multiply(recoveryFactor).negate();
-            } else { // Slept LESS than or EQUAL to target
-                debtChange = difference.negate();
-            }
-            return previousDebt.add(debtChange);
-        });
-
-        return newDebt.setScale(2, RoundingMode.HALF_UP).doubleValue();
+        validateHoursSlept(hoursSlept);
+        BigDecimal newDebt = currentSleepDebt.updateAndGet(previousDebt ->
+                calculateNewDebt(previousDebt, hoursSlept)
+        );
+        return formatDebtValue(newDebt);
     }
 
     @Override
     public void reset() {
-        this.currentSleepDebt.set(BigDecimal.ZERO);
+        this.currentSleepDebt.set(ZERO);
+    }
+
+    // Helper methods for improved readability
+
+    private void validateHoursSlept(BigDecimal hoursSlept) {
+        if (hoursSlept.compareTo(ZERO) < 0) {
+            throw new IllegalArgumentException("Hours slept cannot be negative.");
+        }
+    }
+
+    private BigDecimal calculateNewDebt(BigDecimal previousDebt, BigDecimal hoursSlept) {
+        BigDecimal sleepDifference = hoursSlept.subtract(TARGET_SLEEP_HOURS);
+        BigDecimal debtChange;
+
+        if (sleepDifference.compareTo(ZERO) > 0) {
+            // Slept more than target - reduce debt based on recovery factor
+            BigDecimal recoveryFactor = calculateRecoveryFactor(previousDebt);
+            debtChange = sleepDifference.multiply(recoveryFactor).negate();
+        } else {
+            // Slept less than or equal to target - increase debt by full difference
+            debtChange = sleepDifference.negate();
+        }
+
+        return previousDebt.add(debtChange);
+    }
+
+    private BigDecimal calculateRecoveryFactor(BigDecimal currentDebt) {
+        // If no debt or negative debt (sleep surplus), recovery is 100% effective
+        if (currentDebt.compareTo(ZERO) <= 0) {
+            return ONE;
+        }
+
+        // As debt increases, recovery becomes less effective
+        // Recovery factor decreases linearly from 1.0 to MIN_RECOVERY_FACTOR (0.3)
+        BigDecimal debtRatio = currentDebt.divide(MAX_EFFECTIVE_DEBT, 4, RoundingMode.HALF_UP);
+        BigDecimal factorReduction = debtRatio.multiply(ONE.subtract(MIN_RECOVERY_FACTOR));
+        BigDecimal calculatedFactor = ONE.subtract(factorReduction);
+
+        // Ensure recovery factor doesn't go below minimum
+        return calculatedFactor.max(MIN_RECOVERY_FACTOR);
+    }
+
+    private double formatDebtValue(BigDecimal debt) {
+        return debt.setScale(2, RoundingMode.HALF_UP).doubleValue();
     }
 }
