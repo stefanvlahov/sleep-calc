@@ -2,9 +2,9 @@ package org.svlahov.sleepcalc.service;
 
 public interface SleepService {
 
-    double recordSleep(double hoursSlept);
+    double recordSleep(String userId, double hoursSlept);
 
-    double getCurrentSleepDebt();
+    double getCurrentSleepDebt(String userId);
 
-    void reset();
+    void reset(String UserId);
 }

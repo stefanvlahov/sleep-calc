@@ -16,12 +16,12 @@ public class SleepController {
 
     @GetMapping("/debt")
     public double getCurrentSleepDebt() {
-        return sleepService.getCurrentSleepDebt();
+        return sleepService.getCurrentSleepDebt("default-user");
     }
 
     @PostMapping
     public double recordSleep(@RequestBody SleepInput sleepInput) {
-        return sleepService.recordSleep(sleepInput.getHoursSlept());
+        return sleepService.recordSleep("default-user", sleepInput.getHoursSlept());
     }
 
     public static class SleepInput {
@@ -37,7 +37,7 @@ public class SleepController {
     }
 
     void reset() {
-        sleepService.reset();
+        sleepService.reset("default-user");
     }
 
 }

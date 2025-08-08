@@ -1,6 +1,8 @@
 package org.svlahov.sleepcalc.service;
 
 import org.springframework.stereotype.Service;
+import org.svlahov.sleepcalc.entity.SleepData;
+import org.svlahov.sleepcalc.repository.SleepDataRepository;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -19,26 +21,37 @@ public class SleepServiceImpl implements SleepService {
     private static final BigDecimal ONE = BigDecimal.ONE;
 
     // Current state
-    private final AtomicReference<BigDecimal> currentSleepDebt = new AtomicReference<>(BigDecimal.ZERO);
+    private final SleepDataRepository sleepDataRepository;
 
-    @Override
-    public double getCurrentSleepDebt() {
-        return formatDebtValue(currentSleepDebt.get());
+    public SleepServiceImpl(SleepDataRepository sleepDataRepository) {
+        this.sleepDataRepository = sleepDataRepository;
     }
 
     @Override
-    public double recordSleep(double hoursSleptValue) {
+    public double getCurrentSleepDebt(String userId) {
+        return sleepDataRepository.findByUserId(userId)
+                                    .map(data -> formatDebtValue(data.getSleepDebt()))
+                                    .orElse(0.0);
+    }
+
+    @Override
+    public double recordSleep(String userId, double hoursSleptValue) {
+        SleepData data = sleepDataRepository.findByUserId(userId).orElseGet(() -> new SleepData(userId));
+
         BigDecimal hoursSlept = BigDecimal.valueOf(hoursSleptValue);
         validateHoursSlept(hoursSlept);
-        BigDecimal newDebt = currentSleepDebt.updateAndGet(previousDebt ->
-                calculateNewDebt(previousDebt, hoursSlept)
-        );
-        return formatDebtValue(newDebt);
+
+        BigDecimal newDebt = calculateNewDebt(data.getSleepDebt(), hoursSlept);
+        data.setSleepDebt(newDebt);
+
+        sleepDataRepository.save(data);
+
+        return formatDebtValue(data.getSleepDebt());
     }
 
     @Override
-    public void reset() {
-        this.currentSleepDebt.set(ZERO);
+    public void reset(String userId) {
+        sleepDataRepository.findByUserId(userId).ifPresent(sleepDataRepository::delete);
     }
 
     // Helper methods for improved readability
