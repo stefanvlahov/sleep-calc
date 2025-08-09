@@ -16,6 +16,7 @@ import org.svlahov.sleepcalc.service.SleepService;
 
 import static org.hamcrest.Matchers.is;
 import static org.mockito.ArgumentMatchers.anyDouble;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -43,7 +44,7 @@ class SleepControllerTest {
     @Test
     @DisplayName("GET /api/sleep/debt should get value from service")
     void getDebt_shouldReturnValueFromService() throws Exception {
-        when(sleepService.getCurrentSleepDebt()).thenReturn(5.0);
+        when(sleepService.getCurrentSleepDebt("default-user")).thenReturn(5.0);
 
         mockMvc.perform(get("/api/sleep/debt"))
                 .andExpect(status().isOk())
@@ -56,7 +57,7 @@ class SleepControllerTest {
     void recordSleep_shouldCallServiceAndReturnResult() throws Exception {
         SleepController.SleepInput sleepInput = new SleepController.SleepInput();
         sleepInput.setHoursSlept(8.0);
-        when(sleepService.recordSleep(8.0)).thenReturn(-0.5);
+        when(sleepService.recordSleep("default-user",8.0)).thenReturn(-0.5);
 
         mockMvc.perform(post("/api/sleep")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -70,7 +71,7 @@ class SleepControllerTest {
     void recordSleep_whenInputNegative_thenReturnBadRequest() throws Exception {
         SleepController.SleepInput sleepInput = new SleepController.SleepInput();
         sleepInput.setHoursSlept(-1.0);
-        when(sleepService.recordSleep(anyDouble())).thenThrow(new IllegalArgumentException("Hours slept cannot be negative."));
+        when(sleepService.recordSleep(anyString(), anyDouble())).thenThrow(new IllegalArgumentException("Hours slept cannot be negative."));
 
         mockMvc.perform(post("/api/sleep")
                         .contentType(MediaType.APPLICATION_JSON)
