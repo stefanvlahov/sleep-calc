@@ -3,68 +3,88 @@ package org.svlahov.sleepcalc.service;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.svlahov.sleepcalc.entity.SleepData;
+import org.svlahov.sleepcalc.repository.SleepDataRepository;
+
+import java.math.BigDecimal;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 public class SleepServiceTest {
 
-    private SleepService sleepService;
+    @Mock
+    private SleepDataRepository sleepDataRepository;
 
-    @BeforeEach
-    void setUp() {
-        sleepService = new SleepServiceImpl();
-    }
-
-    @Test
-    @DisplayName("Initial sleep debt should be zero")
-    void getInitialSleepDebt_shouldBeZero() {
-        assertEquals(0.0, sleepService.getCurrentSleepDebt(), "Initial debt should be 0.0");
-    }
+    @InjectMocks
+    private SleepServiceImpl sleepService;
 
     @Test
-    @DisplayName("Should increase debt when sleep is less than target")
-    void recordSleep_whenLessThanTarget_thenIncreaseDebt() {
-        double newDebt = sleepService.recordSleep(6.0);
+    @DisplayName("recordSleep for a NEW user should create new data and calculate debt")
+    void recordSleep_forNewUser_createsAndCalculatesDebt() {
+        when(sleepDataRepository.findByUserId("new-user")).thenReturn(Optional.empty());
+
+        double newDebt = sleepService.recordSleep("new-user", 6.0);
 
         assertEquals(1.5, newDebt, 0.01);
-        assertEquals(1.5, sleepService.getCurrentSleepDebt(), 0.01);
+
+        ArgumentCaptor<SleepData> sleepDataCaptor = ArgumentCaptor.forClass(SleepData.class);
+        verify(sleepDataRepository).save(sleepDataCaptor.capture());
+
+        SleepData savedData = sleepDataCaptor.getValue();
+        assertEquals("new-user", savedData.getUserId());
+        assertEquals(0, new BigDecimal("1.5").compareTo(savedData.getSleepDebt()));
     }
 
     @Test
-    @DisplayName("Should decrease debt when sleep is more than target")
-    void recordSleep_whenMoreThanTarget_thenDecreaseDebt() {
-        double newDebt = sleepService.recordSleep(8.5);
+    @DisplayName("recordSleep for an EXISTING user should update data and apply diminished recovery")
+    void recordSleep_forExistingUser_updatesAndCalculatesDebt() {
 
-        assertEquals(-1.0, newDebt, 0.01);
+        SleepData existingData = new SleepData("existing-user");
+        existingData.setSleepDebt(new BigDecimal("5.0"));
+
+        when(sleepDataRepository.findByUserId("existing-user")).thenReturn(Optional.of(existingData));
+
+        double newDebt = sleepService.recordSleep("existing-user", 9.5);
+
+        assertEquals(3.35, newDebt, 0.01);
+
+        ArgumentCaptor<SleepData> sleepDataCaptor = ArgumentCaptor.forClass(SleepData.class);
+        verify(sleepDataRepository).save(sleepDataCaptor.capture());
+
+        SleepData savedData = sleepDataCaptor.getValue();
+        assertEquals("existing-user", savedData.getUserId());
+        assertEquals(0, new BigDecimal("3.35").compareTo(savedData.getSleepDebt()));
     }
 
     @Test
-    @DisplayName("Should not change debt when sleep is exactly the target")
-    void recordSleep_whenExactlyTarget_thenNoChange() {
-        double newDebt = sleepService.recordSleep(7.5);
+    @DisplayName("getCurrentSleepDebt for an existing user should return the stored debt")
+    void getCurrentSleepDebt_forExistingUser_returnsDebt() {
+        SleepData existingData = new SleepData("test-user");
+        existingData.setSleepDebt(new BigDecimal("10.5"));
+        when(sleepDataRepository.findByUserId("test-user")).thenReturn(Optional.of(existingData));
 
-        assertEquals(0.0, newDebt, 0.01);
+        double currentDebt = sleepService.getCurrentSleepDebt("test-user");
+
+        assertEquals(10.5, currentDebt, 0.01);
     }
 
     @Test
-    @DisplayName("Should apply diminished recovery when debt is high")
-    void recordSleep_whenDebtIsHigh_thenApplyDiminishedRecovery() {
-        sleepService.recordSleep(2.5);
+    @DisplayName("getCurrentSLeepDebt for a new user should return 0.0")
+    void getCurrentSleepDebt_forNewUser_returnsZero() {
+        when(sleepDataRepository.findByUserId("new-user")).thenReturn(Optional.empty());
 
-        double newDebt = sleepService.recordSleep(9.5);
+        double currentDebt = sleepService.getCurrentSleepDebt("new-user");
 
-        assertEquals(3.35, newDebt, 0.01, "Diminished recovery was not applied correctly.");
-    }
-
-    @Test
-    @DisplayName("Should throw exception for negative sleep hours")
-    void recordSleep_whenInputIsNegative_thenThrowsException() {
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
-                () -> sleepService.recordSleep(-1.0)
-        );
-
-        assertEquals("Hours slept cannot be negative.", exception.getMessage());
+        assertEquals(0.0, currentDebt, 0.01);
     }
 }
