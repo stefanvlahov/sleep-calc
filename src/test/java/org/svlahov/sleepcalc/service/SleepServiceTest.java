@@ -1,6 +1,5 @@
 package org.svlahov.sleepcalc.service;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,17 +28,14 @@ public class SleepServiceTest {
     @InjectMocks
     private SleepServiceImpl sleepService;
 
-    @BeforeEach
-    void setUp() {
-        when(sleepDataRepository.save(any(SleepData.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
-    }
-
     @Test
     @DisplayName("recordSleep: Extra sleep with zero debt should increase surplus")
     void recordSleep_withExtraSleepAndNoDebt_increaseSurplus() {
        String userId = "rested-user";
        when(sleepDataRepository.findByUserId(userId)).thenReturn(Optional.empty());
+
+       when(sleepDataRepository.save(any(SleepData.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
        SleepService.SleepState newState = sleepService.recordSleep(userId, 9.5);
 
@@ -55,6 +51,9 @@ public class SleepServiceTest {
         existingData.setSleepSurplus(new BigDecimal("3.0"));
         when(sleepDataRepository.findByUserId(userId)).thenReturn(Optional.of(existingData));
 
+        when(sleepDataRepository.save(any(SleepData.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
         SleepService.SleepState newState = sleepService.recordSleep(userId, 6.5);
 
         assertEquals(0.0, newState.sleepDebt(), "Debt should remain zero");
@@ -69,6 +68,9 @@ public class SleepServiceTest {
         existingData.setSleepSurplus(new BigDecimal("1.0"));
         when(sleepDataRepository.findByUserId(userId)).thenReturn(Optional.of(existingData));
 
+        when(sleepDataRepository.save(any(SleepData.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
         SleepService.SleepState newState = sleepService.recordSleep(userId, 4.5);
 
         assertEquals(2.0, newState.sleepDebt(), 0.01, "Debt should increase by the remaining shortfall");
@@ -82,6 +84,9 @@ public class SleepServiceTest {
         SleepData existingData = new SleepData(userId);
         existingData.setSleepDebt(new BigDecimal("1.0"));
         when(sleepDataRepository.findByUserId(userId)).thenReturn(Optional.of(existingData));
+
+        when(sleepDataRepository.save(any(SleepData.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
         SleepService.SleepState newState = sleepService.recordSleep(userId, 9.5);
 
@@ -120,6 +125,9 @@ public class SleepServiceTest {
     void recordSleep_forNewUser_createsAndCalculatesDebt() {
         when(sleepDataRepository.findByUserId("new-user")).thenReturn(Optional.empty());
 
+        when(sleepDataRepository.save(any(SleepData.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
         SleepService.SleepState newState = sleepService.recordSleep("new-user", 6.0);
 
         assertEquals(1.5, newState.sleepDebt(), 0.01);
@@ -139,18 +147,21 @@ public class SleepServiceTest {
         SleepData existingData = new SleepData(userId);
         existingData.setSleepDebt(new BigDecimal("5.0"));
 
-        when(sleepDataRepository.findByUserId("existing-user")).thenReturn(Optional.of(existingData));
+        when(sleepDataRepository.findByUserId(userId)).thenReturn(Optional.of(existingData));
+
+        when(sleepDataRepository.save(any(SleepData.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
         SleepService.SleepState newState = sleepService.recordSleep(userId, 9.5);
 
         assertEquals(3.35, newState.sleepDebt(), 0.01, "Debt should be reduced by the diminished recovery amount");
-        assertEquals(0.0, newState.sleepSurplus(), "Surplus should remain zero, as all extra sleep was used to pay debt");
+        assertEquals(0.35, newState.sleepSurplus(), "Surplus should be the extra sleep minus the debt that was paid down");
 
         ArgumentCaptor<SleepData> sleepDataCaptor = ArgumentCaptor.forClass(SleepData.class);
         verify(sleepDataRepository).save(sleepDataCaptor.capture());
 
         SleepData savedData = sleepDataCaptor.getValue();
         assertEquals(0, new BigDecimal("3.35").compareTo(savedData.getSleepDebt()));
-        assertEquals(0, BigDecimal.ZERO.compareTo(savedData.getSleepSurplus()));
+        assertEquals(0, new BigDecimal("0.35").compareTo(savedData.getSleepSurplus()));
     }
 }

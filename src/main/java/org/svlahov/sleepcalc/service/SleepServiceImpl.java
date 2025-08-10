@@ -6,7 +6,6 @@ import org.svlahov.sleepcalc.repository.SleepDataRepository;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.concurrent.atomic.AtomicReference;
 
 @Service
 public class SleepServiceImpl implements SleepService {
@@ -28,54 +27,67 @@ public class SleepServiceImpl implements SleepService {
     }
 
     @Override
-    public double getCurrentSleepDebt(String userId) {
+    public SleepState getCurrentSleepState(String userId) {
         return sleepDataRepository.findByUserId(userId)
-                                    .map(data -> formatDebtValue(data.getSleepDebt()))
-                                    .orElse(0.0);
+                .map(data -> new SleepState(formatDebtValue(data.getSleepDebt()), formatDebtValue(data.getSleepSurplus())))
+                .orElse(new SleepState(0.0, 0.0));
     }
 
     @Override
-    public double recordSleep(String userId, double hoursSleptValue) {
+    public SleepState recordSleep(String userId, double hoursSleptValue) {
         SleepData data = sleepDataRepository.findByUserId(userId).orElseGet(() -> new SleepData(userId));
 
         BigDecimal hoursSlept = BigDecimal.valueOf(hoursSleptValue);
         validateHoursSlept(hoursSlept);
 
-        BigDecimal newDebt = calculateNewDebt(data.getSleepDebt(), hoursSlept);
-        data.setSleepDebt(newDebt);
+        BigDecimal sleepDiffernece = hoursSlept.subtract(TARGET_SLEEP_HOURS);
 
-        sleepDataRepository.save(data);
+        if (sleepDiffernece.compareTo(ZERO) > 0) {
+            applyExtraSleep(data, sleepDiffernece);
+        } else if (sleepDiffernece.compareTo(ZERO) < 0) {
+            applySleepShortfall(data, sleepDiffernece.negate());
+        }
 
-        return formatDebtValue(data.getSleepDebt());
-    }
-
-    @Override
-    public void reset(String userId) {
-        sleepDataRepository.findByUserId(userId).ifPresent(sleepDataRepository::delete);
+        SleepData savedData = sleepDataRepository.save(data);
+        return new SleepState(formatDebtValue(savedData.getSleepDebt()), formatDebtValue(savedData.getSleepSurplus()));
     }
 
     // Helper methods for improved readability
+
+    private void applyExtraSleep(SleepData data, BigDecimal extraSleep) {
+        BigDecimal currentDebt = data.getSleepDebt();
+
+        if (currentDebt.compareTo(ZERO) <= 0) {
+            data.setSleepSurplus(data.getSleepSurplus().add(extraSleep));
+            return;
+        }
+
+        BigDecimal recoveryFactor = calculateRecoveryFactor(currentDebt);
+        BigDecimal debtReductionAmount = extraSleep.multiply(recoveryFactor);
+
+        BigDecimal actualDebtPaid = debtReductionAmount.min(currentDebt);
+
+        BigDecimal surplusToAdd = extraSleep.subtract(actualDebtPaid);
+
+        data.setSleepDebt(currentDebt.subtract(actualDebtPaid));
+        if (surplusToAdd.compareTo(ZERO) > 0) {
+            data.setSleepSurplus(data.getSleepSurplus().add(surplusToAdd));
+        }
+    }
+
+    private void applySleepShortfall(SleepData data, BigDecimal shortfall) {
+        BigDecimal currentSurplus = data.getSleepSurplus();
+        BigDecimal surplusToUse = shortfall.min(currentSurplus);
+        data.setSleepSurplus(currentSurplus.subtract(surplusToUse));
+
+        BigDecimal remainingShortfall = shortfall.subtract(surplusToUse);
+        data.setSleepDebt(data.getSleepDebt().add(remainingShortfall));
+    }
 
     private void validateHoursSlept(BigDecimal hoursSlept) {
         if (hoursSlept.compareTo(ZERO) < 0) {
             throw new IllegalArgumentException("Hours slept cannot be negative.");
         }
-    }
-
-    private BigDecimal calculateNewDebt(BigDecimal previousDebt, BigDecimal hoursSlept) {
-        BigDecimal sleepDifference = hoursSlept.subtract(TARGET_SLEEP_HOURS);
-        BigDecimal debtChange;
-
-        if (sleepDifference.compareTo(ZERO) > 0) {
-            // Slept more than target - reduce debt based on recovery factor
-            BigDecimal recoveryFactor = calculateRecoveryFactor(previousDebt);
-            debtChange = sleepDifference.multiply(recoveryFactor).negate();
-        } else {
-            // Slept less than or equal to target - increase debt by full difference
-            debtChange = sleepDifference.negate();
-        }
-
-        return previousDebt.add(debtChange);
     }
 
     private BigDecimal calculateRecoveryFactor(BigDecimal currentDebt) {

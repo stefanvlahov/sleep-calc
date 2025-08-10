@@ -2,6 +2,7 @@ package org.svlahov.sleepcalc.controller;
 
 import org.springframework.web.bind.annotation.*;
 import org.svlahov.sleepcalc.service.SleepService;
+import org.svlahov.sleepcalc.service.SleepService.SleepState;
 
 @RestController
 @RequestMapping("api/sleep")
@@ -14,13 +15,13 @@ public class SleepController {
         this.sleepService = sleepService;
     }
 
-    @GetMapping("/debt")
-    public double getCurrentSleepDebt() {
-        return sleepService.getCurrentSleepDebt("default-user");
+    @GetMapping("/state")
+    public SleepState getCurrentSleepState() {
+        return sleepService.getCurrentSleepState("default-user");
     }
 
     @PostMapping
-    public double recordSleep(@RequestBody SleepInput sleepInput) {
+    public SleepState recordSleep(@RequestBody SleepInput sleepInput) {
         return sleepService.recordSleep("default-user", sleepInput.getHoursSlept());
     }
 
@@ -35,9 +36,4 @@ public class SleepController {
             this.hoursSlept = hoursSlept;
         }
     }
-
-    void reset() {
-        sleepService.reset("default-user");
-    }
-
 }
