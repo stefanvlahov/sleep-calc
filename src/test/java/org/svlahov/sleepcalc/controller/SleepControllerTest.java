@@ -7,12 +7,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.svlahov.sleepcalc.exception.RestExceptionHandler;
 import org.svlahov.sleepcalc.service.SleepService;
+import org.svlahov.sleepcalc.service.SleepService.SleepState;
 
 import static org.hamcrest.Matchers.is;
 import static org.mockito.ArgumentMatchers.anyDouble;
@@ -42,14 +44,15 @@ class SleepControllerTest {
     }
 
     @Test
-    @DisplayName("GET /api/sleep/debt should get value from service")
+    @DisplayName("GET /api/sleep/state should return full state from service")
     void getDebt_shouldReturnValueFromService() throws Exception {
-        when(sleepService.getCurrentSleepDebt("default-user")).thenReturn(5.0);
+        when(sleepService.getCurrentSleepState("default-user")).thenReturn(new SleepState(5.0, 2.0));
 
-        mockMvc.perform(get("/api/sleep/debt"))
+        mockMvc.perform(get("/api/sleep/state"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$", is(5.0)));
+                .andExpect(jsonPath("$.sleepDebt", is(5.0)))
+                .andExpect(jsonPath("$.sleepSurplus", is(2.0)));
     }
 
     @Test
@@ -57,13 +60,16 @@ class SleepControllerTest {
     void recordSleep_shouldCallServiceAndReturnResult() throws Exception {
         SleepController.SleepInput sleepInput = new SleepController.SleepInput();
         sleepInput.setHoursSlept(8.0);
-        when(sleepService.recordSleep("default-user",8.0)).thenReturn(-0.5);
+        when(sleepService.recordSleep("default-user",8.0)).thenReturn(new SleepState(0.0, 0.5));
 
         mockMvc.perform(post("/api/sleep")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsBytes(sleepInput)))
+                        .content(objectMapper.writeValueAsString(sleepInput)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", is(-0.5)));
+                .andExpect(jsonPath("$.sleepDebt", is(0.0)))
+                .andExpect(jsonPath("$.sleepSurplus", is(0.5)));
+
+        Mockito.verify(sleepService).recordSleep("default-user",8.0);
     }
 
     @Test
