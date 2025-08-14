@@ -1,6 +1,6 @@
 # Sleep Debt Calculator
 
-A Spring Boot web application that helps track and manage both sleep debt and sleep surplus. This application calculates sleep patterns based on the difference between actual sleep hours and a target of 7.5 hours per night, now featuring a comprehensive sleep surplus system.
+A Spring Boot web application that helps track and manage both sleep debt and sleep surplus. This application calculates sleep patterns based on the difference between actual sleep hours and a target of 7.5 hours per night, now featuring a comprehensive sleep surplus system and flexible input formats.
 
 ### Overview
 
@@ -8,10 +8,12 @@ Sleep debt (or sleep deficit) is the difference between the amount of sleep some
 
 ### Features
 
-- Track daily sleep hours
+- Track daily sleep hours with **flexible input formats**
+- **NEW: Time format input** - enter sleep as "8:30" for 8 hours and 30 minutes
+- **NEW: Decimal format input** - enter sleep as "8.5" for 8.5 hours
 - Calculate sleep debt based on a target of 7.5 hours per night
-- **NEW: Sleep surplus tracking** - accumulate extra sleep hours when sleeping above target
-- **NEW: Sleep surplus utilization** - use banked sleep hours to offset future shortfalls
+- **Sleep surplus tracking** - accumulate extra sleep hours when sleeping above target
+- **Sleep surplus utilization** - use banked sleep hours to offset future shortfalls
 - View current sleep debt and surplus status
 - Realistic sleep debt model with diminished recovery for high debt levels
 - Intelligent surplus management that prioritizes debt repayment
@@ -30,6 +32,20 @@ Sleep debt (or sleep deficit) is the difference between the amount of sleep some
 |--------|----------|-------------|
 | GET | `/api/sleep/state` | Returns the current sleep state (debt and surplus) |
 | POST | `/api/sleep` | Records sleep hours and updates the state |
+
+### Input Formats
+
+The application now accepts sleep time in two flexible formats:
+
+#### Time Format (HH:mm)
+- Examples: "8:30", "7:45", "9:15"
+- Automatically converts hours and minutes to decimal hours
+- Supports both single and double digit hours (e.g., "8:30" or "08:30")
+
+#### Decimal Format
+- Examples: "8.5", "7.75", "9.25"
+- Direct decimal hour input
+- Must be a positive number
 
 ### Sleep Calculation Rules
 
@@ -64,11 +80,25 @@ Response:
 }
 ```
 
-#### Record Sleep Hours:
+#### Record Sleep Hours (Time Format):
 ```bash
 curl -X POST http://localhost:8080/api/sleep \
   -H "Content-Type: application/json" \
-  -d '{"hoursSlept": 8.5}'
+  -d '{"timeSlept": "8:30"}'
+```
+Response:
+```json
+{
+  "sleepDebt": 1.8,
+  "sleepSurplus": 0.0
+}
+```
+
+#### Record Sleep Hours (Decimal Format):
+```bash
+curl -X POST http://localhost:8080/api/sleep \
+  -H "Content-Type: application/json" \
+  -d '{"timeSlept": "8.5"}'
 ```
 Response:
 ```json
@@ -82,17 +112,17 @@ Response:
 
 #### Scenario 1: Building Surplus
 - Current state: 0 debt, 0 surplus
-- Sleep 9 hours (1.5 hours extra)
+- Sleep "9:00" or "9.0" hours (1.5 hours extra)
 - Result: 0 debt, 1.5 surplus
 
 #### Scenario 2: Using Surplus
 - Current state: 0 debt, 2.0 surplus
-- Sleep 6 hours (1.5 hours short)
+- Sleep "6:00" or "6.0" hours (1.5 hours short)
 - Result: 0 debt, 0.5 surplus
 
 #### Scenario 3: Paying Down Debt
 - Current state: 3.0 debt, 0 surplus
-- Sleep 9 hours (1.5 hours extra)
+- Sleep "9:00" or "9.0" hours (1.5 hours extra)
 - Result: ~2.1 debt, 0 surplus (recovery factor applied)
 
 ### Frontend Integration
