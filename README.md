@@ -21,7 +21,7 @@ Sleep debt (or sleep deficit) is the difference between the amount of sleep some
 ### Technology Stack
 
 - Java 21
-- Spring Boot 3.4.5
+- Spring Boot 3.5.4
 - Spring Data JPA
 - Spring Web
 - JUnit 5 for testing
