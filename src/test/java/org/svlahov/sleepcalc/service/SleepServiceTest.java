@@ -13,8 +13,7 @@ import org.svlahov.sleepcalc.repository.SleepDataRepository;
 import java.math.BigDecimal;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -29,23 +28,43 @@ public class SleepServiceTest {
     private SleepServiceImpl sleepService;
 
     @Test
-    @DisplayName("recordSleep: Extra sleep with zero debt should increase surplus")
-    void recordSleep_withExtraSleepAndNoDebt_increaseSurplus() {
+    @DisplayName("recordSleep should throw exception for invalid time format")
+    void recordSleep_withInvalidFromat_throwsException() {
+       assertThrows(IllegalArgumentException.class, () -> {
+           sleepService.recordSleep("test-user", "invalid-time");
+       });
+    }
+
+    @Test
+    @DisplayName("recordSleep should throw exception for out of bounds time values")
+    void recordSleep_withOutOfBoundsTime_throwsException() {
+        assertThrows(IllegalArgumentException.class,  () -> {
+            sleepService.recordSleep("test-user", "8:60");
+        }, "Minutes should not be 60 or greater.");
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            sleepService.recordSleep("test-user", "24:00");
+        }, "Hours should be less than 24");
+    }
+
+    @Test
+    @DisplayName("recordSleep: Extra sleep (as string) with zero debt should increase surplus")
+    void recordSleep_withExtraSleepAsStringAndNoDebt_increaseSurplus() {
        String userId = "rested-user";
        when(sleepDataRepository.findByUserId(userId)).thenReturn(Optional.empty());
 
        when(sleepDataRepository.save(any(SleepData.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-       SleepService.SleepState newState = sleepService.recordSleep(userId, 9.5);
+       SleepService.SleepState newState = sleepService.recordSleep(userId, "9:30");
 
        assertEquals(0.0, newState.sleepDebt(), "Debt should remain zero");
        assertEquals(2.0, newState.sleepSurplus(), 0.01, "Surplus should increase by 2.0");
     }
 
     @Test
-    @DisplayName("recordSleep: Shortfall with surplus should decrease surplus first")
-    void recordSleep_withShortFallAndSurplus_decreasesSurplus() {
+    @DisplayName("recordSleep: Shortfall (as string) with surplus should decrease surplus first")
+    void recordSleep_withShortFallAsStringAndSurplus_decreasesSurplus() {
         String userId = "surplus-user";
         SleepData existingData = new SleepData(userId);
         existingData.setSleepSurplus(new BigDecimal("3.0"));
@@ -54,15 +73,15 @@ public class SleepServiceTest {
         when(sleepDataRepository.save(any(SleepData.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        SleepService.SleepState newState = sleepService.recordSleep(userId, 6.5);
+        SleepService.SleepState newState = sleepService.recordSleep(userId, "6:30");
 
         assertEquals(0.0, newState.sleepDebt(), "Debt should remain zero");
         assertEquals(2.0, newState.sleepSurplus(), 0.01, "Surplus should decrease by 1.0");
     }
 
     @Test
-    @DisplayName("recordSleep: Large shortfall should deplete surplus and increase debt")
-    void recordSleep_withLargeShortfall_depletesSurplusAndIncreasesDebt() {
+    @DisplayName("recordSleep: Large shortfall (as string) should deplete surplus and increase debt")
+    void recordSleep_withLargeShortfallAsString_depletesSurplusAndIncreasesDebt() {
         String userId = "user-in-trouble";
         SleepData existingData = new SleepData(userId);
         existingData.setSleepSurplus(new BigDecimal("1.0"));
@@ -71,15 +90,15 @@ public class SleepServiceTest {
         when(sleepDataRepository.save(any(SleepData.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        SleepService.SleepState newState = sleepService.recordSleep(userId, 4.5);
+        SleepService.SleepState newState = sleepService.recordSleep(userId, "4:30");
 
         assertEquals(2.0, newState.sleepDebt(), 0.01, "Debt should increase by the remaining shortfall");
         assertEquals(0.0, newState.sleepSurplus(), "Surplus should be depleted to zero");
     }
 
     @Test
-    @DisplayName("recordSleep: Extra sleep should pay down debt before increasing surplus")
-    void recordSleep_withExtraSleep_PayDownDebtBeforeSurplus() {
+    @DisplayName("recordSleep: Extra sleep (as string) should pay down debt")
+    void recordSleep_withExtraSleepString_PayDownDebtBeforeSurplus() {
         String userId = "paying-debt";
         SleepData existingData = new SleepData(userId);
         existingData.setSleepDebt(new BigDecimal("1.0"));
@@ -88,10 +107,10 @@ public class SleepServiceTest {
         when(sleepDataRepository.save(any(SleepData.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        SleepService.SleepState newState = sleepService.recordSleep(userId, 9.5);
+        SleepService.SleepState newState = sleepService.recordSleep(userId, "8:30");
 
         assertEquals(0.0, newState.sleepDebt(), "Debt should be paid off to zero");
-        assertEquals(1.0, newState.sleepSurplus(), 0.01, "Surplus should increase by remaining extra sleep");
+        assertEquals(0.0, newState.sleepSurplus(), 0.01, "Surplus should be zero after paying off 1.0 debt");
     }
 
     @Test
@@ -128,7 +147,7 @@ public class SleepServiceTest {
         when(sleepDataRepository.save(any(SleepData.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        SleepService.SleepState newState = sleepService.recordSleep("new-user", 6.0);
+        SleepService.SleepState newState = sleepService.recordSleep("new-user", "6:00");
 
         assertEquals(1.5, newState.sleepDebt(), 0.01);
 
@@ -141,7 +160,7 @@ public class SleepServiceTest {
     }
 
     @Test
-    @DisplayName("recordSleep: High debt with extra sleep should apply diminished recovery")
+    @DisplayName("recordSleep: High debt (as string) with extra sleep should apply diminished recovery")
     void recordSleep_forExistingUser_updatesAndCalculatesDebt() {
         String userId = "high-debt-user";
         SleepData existingData = new SleepData(userId);
@@ -152,7 +171,7 @@ public class SleepServiceTest {
         when(sleepDataRepository.save(any(SleepData.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        SleepService.SleepState newState = sleepService.recordSleep(userId, 9.5);
+        SleepService.SleepState newState = sleepService.recordSleep(userId, "9:30");
 
         assertEquals(3.35, newState.sleepDebt(), 0.01, "Debt should be reduced by the diminished recovery amount");
         assertEquals(0.35, newState.sleepSurplus(), "Surplus should be the extra sleep minus the debt that was paid down");

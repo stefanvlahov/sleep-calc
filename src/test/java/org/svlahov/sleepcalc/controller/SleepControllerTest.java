@@ -56,20 +56,20 @@ class SleepControllerTest {
     }
 
     @Test
-    @DisplayName("POST /api/sleep should call service and return its result")
+    @DisplayName("POST /api/sleep should accept time string and call service")
     void recordSleep_shouldCallServiceAndReturnResult() throws Exception {
         SleepController.SleepInput sleepInput = new SleepController.SleepInput();
-        sleepInput.setHoursSlept(8.0);
-        when(sleepService.recordSleep("default-user",8.0)).thenReturn(new SleepState(0.0, 0.5));
+        sleepInput.setTimeSlept("8:30");
+        when(sleepService.recordSleep("default-user","8:30")).thenReturn(new SleepState(0.0, 1.0));
 
         mockMvc.perform(post("/api/sleep")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(sleepInput)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.sleepDebt", is(0.0)))
-                .andExpect(jsonPath("$.sleepSurplus", is(0.5)));
+                .andExpect(jsonPath("$.sleepSurplus", is(1.0)));
 
-        Mockito.verify(sleepService).recordSleep("default-user",8.0);
+        Mockito.verify(sleepService).recordSleep("default-user","8:30");
     }
 
     @Test
