@@ -6,6 +6,9 @@ import org.svlahov.sleepcalc.repository.SleepDataRepository;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 
 @Service
 public class SleepServiceImpl implements SleepService {
@@ -14,6 +17,8 @@ public class SleepServiceImpl implements SleepService {
     private static final BigDecimal TARGET_SLEEP_HOURS = new BigDecimal("7.5");
     private static final BigDecimal MAX_EFFECTIVE_DEBT = new BigDecimal("20.0");
     private static final BigDecimal MIN_RECOVERY_FACTOR = new BigDecimal("0.3");
+    private static final int MINUTES_PER_HOUR = 60;
+    private static final int DECIMAL_SCALE = 2;
 
     // Common BigDecimal values
     private static final BigDecimal ZERO = BigDecimal.ZERO;
@@ -34,18 +39,17 @@ public class SleepServiceImpl implements SleepService {
     }
 
     @Override
-    public SleepState recordSleep(String userId, double hoursSleptValue) {
+    public SleepState recordSleep(String userId, String timeSlept) {
         SleepData data = sleepDataRepository.findByUserId(userId).orElseGet(() -> new SleepData(userId));
 
-        BigDecimal hoursSlept = BigDecimal.valueOf(hoursSleptValue);
-        validateHoursSlept(hoursSlept);
+        BigDecimal hoursSleptDecimal = parseTimeSleptToDecimal(timeSlept);
 
-        BigDecimal sleepDiffernece = hoursSlept.subtract(TARGET_SLEEP_HOURS);
+        BigDecimal sleepDifference = hoursSleptDecimal.subtract(TARGET_SLEEP_HOURS);
 
-        if (sleepDiffernece.compareTo(ZERO) > 0) {
-            applyExtraSleep(data, sleepDiffernece);
-        } else if (sleepDiffernece.compareTo(ZERO) < 0) {
-            applySleepShortfall(data, sleepDiffernece.negate());
+        if (sleepDifference.compareTo(ZERO) > 0) {
+            applyExtraSleep(data, sleepDifference);
+        } else if (sleepDifference.compareTo(ZERO) < 0) {
+            applySleepShortfall(data, sleepDifference.negate());
         }
 
         SleepData savedData = sleepDataRepository.save(data);
@@ -53,6 +57,48 @@ public class SleepServiceImpl implements SleepService {
     }
 
     // Helper methods for improved readability
+
+    private BigDecimal parseTimeSleptToDecimal(String timeSlept) {
+        if (timeSlept == null || timeSlept.isBlank()) {
+            throw new IllegalArgumentException("Time slept cannot be empty.");
+        }
+
+        if (timeSlept.contains(":")) {
+            return parseTimeUsingLocalTime(timeSlept);
+        }
+
+        return parseDecimalFormat(timeSlept);
+    }
+
+    private BigDecimal parseTimeUsingLocalTime(String timeSlept) {
+        try {
+            if (timeSlept.startsWith("24:")) {
+                throw new DateTimeParseException("Hour 24 is not a valid input.", timeSlept, 0);
+            }
+            LocalTime time = LocalTime.parse(timeSlept, DateTimeFormatter.ofPattern("H:mm"));
+            int hours = time.getHour();
+            int minutes = time.getMinute();
+
+            BigDecimal minuteDecimal = new BigDecimal(minutes)
+                    .divide(new BigDecimal(MINUTES_PER_HOUR), DECIMAL_SCALE, RoundingMode.HALF_UP);
+            return new BigDecimal(hours).add(minuteDecimal);
+
+        } catch (DateTimeParseException e) {
+            throw new IllegalArgumentException("Invalid time format. Please use HH:mm", e);
+        }
+    }
+
+    private BigDecimal parseDecimalFormat(String timeSlept) {
+        try {
+            BigDecimal hours = new BigDecimal(timeSlept);
+            if (hours.compareTo(ZERO) < 0) {
+                throw new IllegalArgumentException("Hours slept cannot be negative.");
+            }
+            return hours;
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Invalid number format.");
+        }
+    }
 
     private void applyExtraSleep(SleepData data, BigDecimal extraSleep) {
         BigDecimal currentDebt = data.getSleepDebt();
@@ -84,15 +130,9 @@ public class SleepServiceImpl implements SleepService {
         data.setSleepDebt(data.getSleepDebt().add(remainingShortfall));
     }
 
-    private void validateHoursSlept(BigDecimal hoursSlept) {
-        if (hoursSlept.compareTo(ZERO) < 0) {
-            throw new IllegalArgumentException("Hours slept cannot be negative.");
-        }
-    }
-
     private BigDecimal calculateRecoveryFactor(BigDecimal currentDebt) {
         // If no debt or negative debt (sleep surplus), recovery is 100% effective
-        if (currentDebt.compareTo(ZERO) <= 0) {
+        if (currentDebt.compareTo(ONE) <= 0) {
             return ONE;
         }
 

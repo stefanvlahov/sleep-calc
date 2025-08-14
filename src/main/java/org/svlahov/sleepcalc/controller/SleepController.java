@@ -22,18 +22,18 @@ public class SleepController {
 
     @PostMapping
     public SleepState recordSleep(@RequestBody SleepInput sleepInput) {
-        return sleepService.recordSleep("default-user", sleepInput.getHoursSlept());
+        return sleepService.recordSleep("default-user", sleepInput.getTimeSlept());
     }
 
     public static class SleepInput {
-        private double hoursSlept;
+        private String timeSlept;
 
-        public double getHoursSlept() {
-            return hoursSlept;
+        public String getTimeSlept() {
+            return timeSlept;
         }
 
-        public void setHoursSlept(double hoursSlept) {
-            this.hoursSlept = hoursSlept;
+        public void setTimeSlept(String timeSlept) {
+            this.timeSlept = timeSlept;
         }
     }
 }
