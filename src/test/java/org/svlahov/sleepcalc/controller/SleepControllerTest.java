@@ -17,7 +17,6 @@ import org.svlahov.sleepcalc.service.SleepService;
 import org.svlahov.sleepcalc.service.SleepService.SleepState;
 
 import static org.hamcrest.Matchers.is;
-import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -76,8 +75,8 @@ class SleepControllerTest {
     @DisplayName("POST /api/sleep should return 400 if service throws exception")
     void recordSleep_whenInputNegative_thenReturnBadRequest() throws Exception {
         SleepController.SleepInput sleepInput = new SleepController.SleepInput();
-        sleepInput.setHoursSlept(-1.0);
-        when(sleepService.recordSleep(anyString(), anyDouble())).thenThrow(new IllegalArgumentException("Hours slept cannot be negative."));
+        sleepInput.setTimeSlept("-1:00");
+        when(sleepService.recordSleep(anyString(), anyString())).thenThrow(new IllegalArgumentException("Hours slept cannot be negative."));
 
         mockMvc.perform(post("/api/sleep")
                         .contentType(MediaType.APPLICATION_JSON)

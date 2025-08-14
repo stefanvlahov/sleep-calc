@@ -34,13 +34,12 @@ public class SleepServiceImpl implements SleepService {
     }
 
     @Override
-    public SleepState recordSleep(String userId, double hoursSleptValue) {
+    public SleepState recordSleep(String userId, String timeSlept) {
         SleepData data = sleepDataRepository.findByUserId(userId).orElseGet(() -> new SleepData(userId));
 
-        BigDecimal hoursSlept = BigDecimal.valueOf(hoursSleptValue);
-        validateHoursSlept(hoursSlept);
+        BigDecimal hoursSleptDecimal = parseTimeSleptToDecimal(timeSlept);
 
-        BigDecimal sleepDiffernece = hoursSlept.subtract(TARGET_SLEEP_HOURS);
+        BigDecimal sleepDiffernece = hoursSleptDecimal.subtract(TARGET_SLEEP_HOURS);
 
         if (sleepDiffernece.compareTo(ZERO) > 0) {
             applyExtraSleep(data, sleepDiffernece);
@@ -53,6 +52,45 @@ public class SleepServiceImpl implements SleepService {
     }
 
     // Helper methods for improved readability
+
+    private BigDecimal parseTimeSleptToDecimal(String timeSlept) {
+        if (timeSlept == null || timeSlept.isBlank()) {
+            throw new IllegalArgumentException("Time slept cannot be empty.");
+        }
+
+        if (timeSlept.contains(":")) {
+            String[] parts = timeSlept.split(":");
+            if (parts.length != 2) {
+                throw new IllegalArgumentException("Invalid time format. Please use HH:mm");
+            }
+            try {
+                int hours = Integer.parseInt(parts[0]);
+                int minutes = Integer.parseInt(parts[1]);
+
+                if (hours < 0 || hours >= 24) {
+                    throw new IllegalArgumentException("Hours must be between 0 and 23.");
+                }
+                if (minutes < 0 || minutes >= 60) {
+                    throw new IllegalArgumentException("Minutes must be between 0 and 59.");
+                }
+
+                BigDecimal minuitedecimal = new BigDecimal(minutes).divide(new BigDecimal(60), 2, RoundingMode.HALF_UP);
+                return new BigDecimal(hours).add(minuitedecimal);
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("Invalid time format. Hours and minutes must be numbers.");
+            }
+        }
+
+        try {
+            BigDecimal hours = new BigDecimal(timeSlept);
+            if (hours.compareTo(ZERO) < 0) {
+                throw new IllegalArgumentException("Hours slept cannot be negative.");
+            }
+            return hours;
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Invalid number format..");
+        }
+    }
 
     private void applyExtraSleep(SleepData data, BigDecimal extraSleep) {
         BigDecimal currentDebt = data.getSleepDebt();
@@ -84,15 +122,9 @@ public class SleepServiceImpl implements SleepService {
         data.setSleepDebt(data.getSleepDebt().add(remainingShortfall));
     }
 
-    private void validateHoursSlept(BigDecimal hoursSlept) {
-        if (hoursSlept.compareTo(ZERO) < 0) {
-            throw new IllegalArgumentException("Hours slept cannot be negative.");
-        }
-    }
-
     private BigDecimal calculateRecoveryFactor(BigDecimal currentDebt) {
         // If no debt or negative debt (sleep surplus), recovery is 100% effective
-        if (currentDebt.compareTo(ZERO) <= 0) {
+        if (currentDebt.compareTo(ONE) <= 0) {
             return ONE;
         }
 
