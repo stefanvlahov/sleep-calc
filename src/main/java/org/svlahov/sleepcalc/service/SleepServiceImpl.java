@@ -112,10 +112,12 @@ public class SleepServiceImpl implements SleepService {
         BigDecimal debtReductionAmount = extraSleep.multiply(recoveryFactor);
 
         BigDecimal actualDebtPaid = debtReductionAmount.min(currentDebt);
-
-        BigDecimal surplusToAdd = extraSleep.subtract(actualDebtPaid);
-
         data.setSleepDebt(currentDebt.subtract(actualDebtPaid));
+
+        BigDecimal sleepPowerUsed = (recoveryFactor.compareTo(ZERO) > 0) ? actualDebtPaid.divide(recoveryFactor, 4, RoundingMode.HALF_UP) : ZERO;
+
+        BigDecimal surplusToAdd = extraSleep.subtract(sleepPowerUsed).max(ZERO);
+
         if (surplusToAdd.compareTo(ZERO) > 0) {
             data.setSleepSurplus(data.getSleepSurplus().add(surplusToAdd));
         }
