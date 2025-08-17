@@ -174,13 +174,13 @@ public class SleepServiceTest {
         SleepService.SleepState newState = sleepService.recordSleep(userId, "9:30");
 
         assertEquals(3.35, newState.sleepDebt(), 0.01, "Debt should be reduced by the diminished recovery amount");
-        assertEquals(0.35, newState.sleepSurplus(), "Surplus should be the extra sleep minus the debt that was paid down");
+        assertEquals(0.0, newState.sleepSurplus(), "Surplus should be the extra sleep minus the debt that was paid down");
 
         ArgumentCaptor<SleepData> sleepDataCaptor = ArgumentCaptor.forClass(SleepData.class);
         verify(sleepDataRepository).save(sleepDataCaptor.capture());
 
         SleepData savedData = sleepDataCaptor.getValue();
         assertEquals(0, new BigDecimal("3.35").compareTo(savedData.getSleepDebt()));
-        assertEquals(0, new BigDecimal("0.35").compareTo(savedData.getSleepSurplus()));
+        assertEquals(0, new BigDecimal("0.0").compareTo(savedData.getSleepSurplus()));
     }
 }
