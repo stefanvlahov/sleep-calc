@@ -6,7 +6,7 @@ import org.svlahov.sleepcalc.service.SleepService.SleepState;
 
 @RestController
 @RequestMapping("api/sleep")
-@CrossOrigin(origins = "http://localhost:3000")
+@CrossOrigin(origins = "http://localhost:5173")
 public class SleepController {
 
     private final SleepService sleepService;
