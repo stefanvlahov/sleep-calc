@@ -44,7 +44,7 @@ class SleepControllerTest {
 
     @Test
     @DisplayName("GET /api/sleep/state should return full state from service")
-    void getDebt_shouldReturnValueFromService() throws Exception {
+    void getState_shouldReturnFullStateFromService() throws Exception {
         when(sleepService.getCurrentSleepState("default-user")).thenReturn(new SleepState(5.0, 2.0));
 
         mockMvc.perform(get("/api/sleep/state"))
@@ -56,7 +56,7 @@ class SleepControllerTest {
 
     @Test
     @DisplayName("POST /api/sleep should accept time string and call service")
-    void recordSleep_shouldCallServiceAndReturnResult() throws Exception {
+    void recordSleep_withTimeString_shouldCallServiceAndReturnResult() throws Exception {
         SleepController.SleepInput sleepInput = new SleepController.SleepInput();
         sleepInput.setTimeSlept("8:30");
         when(sleepService.recordSleep("default-user","8:30")).thenReturn(new SleepState(0.0, 1.0));
@@ -72,7 +72,7 @@ class SleepControllerTest {
     }
 
     @Test
-    @DisplayName("POST /api/sleep should return 400 if service throws exception")
+    @DisplayName("POST /api/sleep should return 400 if input is negative")
     void recordSleep_whenInputNegative_thenReturnBadRequest() throws Exception {
         SleepController.SleepInput sleepInput = new SleepController.SleepInput();
         sleepInput.setTimeSlept("-1:00");
