@@ -19,9 +19,10 @@ public class AuthService {
         if (userRepository.findByUsername(username).isPresent()) {
             throw new IllegalArgumentException("Username is already taken");
         }
-        User user = new User();
-        user.setUsername(username);
-        user.setPassword(passwordEncoder.encode(password));
+
+        String hashedPassword = passwordEncoder.encode(password);
+        User user = new User(username, hashedPassword);
+
         return userRepository.save(user);
     }
 }

@@ -18,6 +18,13 @@ public class User {
     @Column
     private String password;
 
+    protected User() {}
+
+    public User(String username, String password) {
+        this.username = username;
+        this.password = password;
+    }
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public String getUsername() { return username; }
