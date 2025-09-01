@@ -2,6 +2,7 @@ package org.svlahov.sleepcalc.service;
 
 import org.springframework.stereotype.Service;
 import org.svlahov.sleepcalc.entity.SleepData;
+import org.svlahov.sleepcalc.entity.User;
 import org.svlahov.sleepcalc.repository.SleepDataRepository;
 
 import java.math.BigDecimal;
