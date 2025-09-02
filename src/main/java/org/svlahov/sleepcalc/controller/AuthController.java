@@ -1,5 +1,7 @@
 package org.svlahov.sleepcalc.controller;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -14,6 +16,8 @@ import org.svlahov.sleepcalc.service.AuthService;
 @RequestMapping("api/auth")
 @CrossOrigin(origins = "http://localhost:5173")
 public class AuthController {
+
+    private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
 
     private final AuthService authService;
     private final AuthenticationManager authenticationManager;
@@ -31,7 +35,8 @@ public class AuthController {
             authService.register(request.getUsername(), request.getPassword());
             return ResponseEntity.ok("User registered successfully");
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+            logger.warn("Registration failed for user '{}': {}", request.getUsername(), e.getMessage())
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid registration data. The username may already be taken.");
         }
     }
 
