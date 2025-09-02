@@ -35,7 +35,7 @@ public class AuthController {
             authService.register(request.getUsername(), request.getPassword());
             return ResponseEntity.ok("User registered successfully");
         } catch (IllegalArgumentException e) {
-            logger.warn("Registration failed for user '{}': {}", request.getUsername(), e.getMessage())
+            logger.warn("Registration failed for user '{}': {}", request.getUsername(), e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid registration data. The username may already be taken.");
         }
     }

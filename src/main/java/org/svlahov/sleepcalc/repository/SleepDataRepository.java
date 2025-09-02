@@ -7,5 +7,5 @@ import java.util.Optional;
 
 public interface SleepDataRepository extends JpaRepository<SleepData, Long> {
 
-    Optional<SleepData> findByUserId(String userId);
+    Optional<SleepData> findByUser_Username(String username);
 }
