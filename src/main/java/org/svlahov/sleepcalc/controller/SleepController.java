@@ -17,12 +17,12 @@ public class SleepController {
 
     @GetMapping("/state")
     public SleepState getCurrentSleepState() {
-        return sleepService.getCurrentSleepState("default-user");
+        return sleepService.getCurrentSleepState();
     }
 
     @PostMapping
     public SleepState recordSleep(@RequestBody SleepInput sleepInput) {
-        return sleepService.recordSleep("default-user", sleepInput.getTimeSlept());
+        return sleepService.recordSleep(sleepInput.getTimeSlept());
     }
 
     public static class SleepInput {

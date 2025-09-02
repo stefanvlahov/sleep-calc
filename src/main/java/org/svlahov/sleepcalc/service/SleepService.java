@@ -4,7 +4,7 @@ public interface SleepService {
 
     record SleepState(double sleepDebt, double sleepSurplus) {}
 
-    SleepState recordSleep(String userId, String timeSlept);
+    SleepState recordSleep(String timeSlept);
 
-    SleepState getCurrentSleepState(String userId);
+    SleepState getCurrentSleepState();
 }

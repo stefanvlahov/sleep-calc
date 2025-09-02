@@ -1,8 +1,12 @@
 package org.svlahov.sleepcalc.service;
 
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.svlahov.sleepcalc.entity.SleepData;
+import org.svlahov.sleepcalc.entity.User;
 import org.svlahov.sleepcalc.repository.SleepDataRepository;
+import org.svlahov.sleepcalc.repository.UserRepository;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -26,21 +30,26 @@ public class SleepServiceImpl implements SleepService {
 
     // Current state
     private final SleepDataRepository sleepDataRepository;
+    private final UserRepository userRepository;
 
-    public SleepServiceImpl(SleepDataRepository sleepDataRepository) {
+    public SleepServiceImpl(SleepDataRepository sleepDataRepository, UserRepository userRepository) {
         this.sleepDataRepository = sleepDataRepository;
+        this.userRepository = userRepository;
     }
 
     @Override
-    public SleepState getCurrentSleepState(String userId) {
-        return sleepDataRepository.findByUserId(userId)
+    public SleepState getCurrentSleepState() {
+        User currentUser = getCurrentUser();
+        return sleepDataRepository.findByUser_Username(currentUser.getUsername())
                 .map(data -> new SleepState(formatDebtValue(data.getSleepDebt()), formatDebtValue(data.getSleepSurplus())))
                 .orElse(new SleepState(0.0, 0.0));
     }
 
     @Override
-    public SleepState recordSleep(String userId, String timeSlept) {
-        SleepData data = sleepDataRepository.findByUserId(userId).orElseGet(() -> new SleepData(userId));
+    public SleepState recordSleep(String timeSlept) {
+        User currentUser = getCurrentUser();
+        SleepData data = sleepDataRepository.findByUser_Username(currentUser.getUsername())
+                .orElseGet(() -> new SleepData(currentUser));
 
         BigDecimal hoursSleptDecimal = parseTimeSleptToDecimal(timeSlept);
 
@@ -57,6 +66,19 @@ public class SleepServiceImpl implements SleepService {
     }
 
     // Helper methods for improved readability
+
+    private User getCurrentUser() {
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        String username;
+        if (principal instanceof UserDetails) {
+            username = ((UserDetails) principal).getUsername();
+        } else {
+            username = principal.toString();
+        }
+
+        return userRepository.findByUsername(username).orElseThrow(() -> new IllegalStateException("Authenticated user not found in database"));
+
+    }
 
     private BigDecimal parseTimeSleptToDecimal(String timeSlept) {
         if (timeSlept == null || timeSlept.isBlank()) {
