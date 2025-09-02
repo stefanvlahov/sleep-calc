@@ -16,6 +16,7 @@ import org.springframework.security.web.SecurityFilterChain;
 public class SecurityConfig {
 
     private final JpaUserDetailsService jpaUserDetailsService;
+    private final JwtAuthFilter jwtAuthFilter;
 
     public SecurityConfig(JpaUserDetailsService jpaUserDetailsService) {
         this.jpaUserDetailsService = jpaUserDetailsService;
