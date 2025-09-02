@@ -1,9 +1,6 @@
 package org.svlahov.sleepcalc.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 
 import java.math.BigDecimal;
 
@@ -14,24 +11,25 @@ public class SleepData {
     @GeneratedValue
     private Long id;
 
-    @Column(unique = true, nullable = false)
-    private String userId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 
     private BigDecimal sleepDebt = BigDecimal.ZERO;
     private BigDecimal sleepSurplus = BigDecimal.ZERO;
 
     protected SleepData() {}
 
-    public SleepData(String userId) {
-        this.userId = userId;
+    public SleepData(User user) {
+        this.user = user;
     }
 
     // --- Getters and Setters ---
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
-    public String getUserId() { return userId; }
-    public void setUserId(String userId) { this.userId = userId; }
+    public User getUser() { return user; }
+    public void setUser(User user) { this.user = user; }
     public BigDecimal getSleepDebt() { return sleepDebt; }
     public void setSleepDebt(BigDecimal sleepDebt) { this.sleepDebt = sleepDebt; }
     public BigDecimal getSleepSurplus() { return sleepSurplus; }
