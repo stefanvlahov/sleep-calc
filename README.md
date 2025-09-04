@@ -21,17 +21,53 @@ Sleep debt (or sleep deficit) is the difference between the amount of sleep some
 ### Technology Stack
 
 - Java 21
-- Spring Boot 3.5.4
+- Spring Boot 3.5.5
 - Spring Data JPA
 - Spring Web
+- **Spring Security 6.5.3** (NEW)
+- **JWT Authentication with JJWT 0.12.7** (NEW)
+- **BCrypt Password Encryption** (NEW)
+- PostgreSQL (Production database)
+- H2 Database (Testing)
 - JUnit 5 for testing
+
+### Authentication System
+
+The application now features a comprehensive JWT-based authentication system that provides secure user registration, login, and personalized sleep tracking.
+
+#### Features
+
+- **User Registration**: Create new user accounts with username and password
+- **JWT Authentication**: Secure token-based authentication with 24-hour token expiration
+- **Password Security**: BCrypt encryption for secure password storage
+- **User-Specific Data**: Each user maintains their own separate sleep debt and surplus tracking
+- **Protected Endpoints**: All sleep tracking endpoints require authentication
+- **Stateless Sessions**: JWT tokens eliminate the need for server-side session storage
+
+#### Security Configuration
+
+- **Protected Routes**: All `/api/sleep/*` endpoints require valid JWT authentication
+- **Public Routes**: `/api/auth/*` endpoints (registration and login) are publicly accessible
+- **CORS Support**: Configured for frontend applications running on `http://localhost:5173`
+- **Password Encoding**: Uses BCrypt with default strength for secure password hashing
 
 ### API Endpoints
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/sleep/state` | Returns the current sleep state (debt and surplus) |
-| POST | `/api/sleep` | Records sleep hours and updates the state |
+#### Authentication Endpoints
+
+| Method | Endpoint | Description | Authentication Required |
+|--------|----------|-------------|------------------------|
+| POST | `/api/auth/register` | Register a new user account | No |
+| POST | `/api/auth/login` | Login and receive JWT token | No |
+
+#### Sleep Tracking Endpoints
+
+| Method | Endpoint | Description | Authentication Required |
+|--------|----------|-------------|------------------------|
+| GET | `/api/sleep/state` | Returns the current user's sleep state | Yes (JWT Token) |
+| POST | `/api/sleep` | Records sleep hours for the authenticated user | Yes (JWT Token) |
+
+**Note**: All sleep tracking endpoints now require a valid JWT token in the Authorization header.
 
 ### Input Formats
 
@@ -108,6 +144,50 @@ Response:
 }
 ```
 
+### Authentication Examples
+
+#### User Registration
+```bash
+curl -X POST http://localhost:8080/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"username": "john_doe", "password": "securepassword123"}'
+```
+
+Response:
+```
+User registered successfully
+```
+
+#### User Login
+```bash
+curl -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "john_doe", "password": "securepassword123"}'
+```
+
+Response:
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+#### Authenticated Sleep Tracking Requests
+
+Once you have a JWT token, include it in the Authorization header for all sleep tracking requests:
+
+```bash
+# Get current sleep state (authenticated)
+curl -X GET http://localhost:8080/api/sleep/state \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+
+# Record sleep hours (authenticated)
+curl -X POST http://localhost:8080/api/sleep \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
+  -d '{"timeSlept": "8:30"}'
+```
+
 ### Usage Scenarios
 
 #### Scenario 1: Building Surplus
@@ -150,17 +230,59 @@ The application will be available at `http://localhost:8080`
 
 ### Data Persistence
 
-Sleep data is persisted using JPA with the following structure:
-- User ID (string identifier)
-- Sleep Debt (decimal hours)
-- Sleep Surplus (decimal hours)
+The application now supports multi-user data persistence with the following structure:
+
+#### User Management
+- **User ID**: Auto-generated unique identifier
+- **Username**: Unique username for login (required)
+- **Password**: BCrypt-encrypted password storage
+
+#### Sleep Data (User-Specific)
+- **User Association**: Each sleep record is tied to a specific authenticated user
+- **Sleep Debt**: Decimal hours of sleep debt (user-specific)
+- **Sleep Surplus**: Decimal hours of sleep surplus (user-specific)
+
+**Important**: All sleep data is now isolated per user. Each authenticated user maintains their own independent sleep debt and surplus tracking.
+
+### Configuration
+
+#### Required Environment Variables
+
+The application requires the following configuration for JWT authentication:
+
+```properties
+# JWT Secret Key (Base64 encoded, minimum 256 bits)
+jwt.secret.key=your-base64-encoded-secret-key-here
+```
+
+**Security Note**: Ensure your JWT secret key is:
+- At least 256 bits (32 bytes) when Base64 decoded
+- Randomly generated and kept secure
+- Different for each environment (development, staging, production)
+
+#### Database Configuration
+
+```properties
+# PostgreSQL Configuration (Production)
+spring.datasource.url=jdbc:postgresql://localhost:5432/sleepcalc
+spring.datasource.username=your-db-username
+spring.datasource.password=your-db-password
+
+# JPA Configuration
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=false
+```
+```
 
 ### Future Enhancements
 
 - Front-end website developed in React.js
-- User authentication and profiles
-- Historical sleep data visualization
-- Sleep trend analysis and recommendations
-- iPhone app/Android app
-- Customizable sleep targets
-- Weekly/monthly sleep summaries
+- ✅ **User authentication and profiles** (COMPLETED)
+- Historical sleep data visualization and export
+- Sleep trend analysis and personalized recommendations
+- iPhone app/Android app with mobile authentication
+- Customizable sleep targets per user
+- Weekly/monthly sleep summaries and reports
+- Social features (optional sleep goal sharing)
+- Email notifications for sleep pattern insights
+- Integration with wearable devices and health apps

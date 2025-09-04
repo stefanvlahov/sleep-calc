@@ -40,8 +40,8 @@ public class SleepDataRepositoryTest {
     }
 
     @Test
-    @DisplayName("findByUserId should return empty Optional when user does not exist")
-    void findByUserId_whenUserDoesNotExist_returnEmpty() {
+    @DisplayName("findByUser_Username should return empty Optional when user does not exist")
+    void findByUser_Username_whenUserDoesNotExist_returnEmpty() {
         Optional<SleepData> foundData = sleepDataRepository.findByUser_Username("non-existing-user");
 
         assertFalse(foundData.isPresent(), "Optional should be empty got a non-existing user");
