@@ -45,7 +45,7 @@ class SleepControllerTest {
     @Test
     @DisplayName("GET /api/sleep/state should return full state from service")
     void getState_shouldReturnFullStateFromService() throws Exception {
-        when(sleepService.getCurrentSleepState("default-user")).thenReturn(new SleepState(5.0, 2.0));
+        when(sleepService.getCurrentSleepState()).thenReturn(new SleepState(5.0, 2.0));
 
         mockMvc.perform(get("/api/sleep/state"))
                 .andExpect(status().isOk())
@@ -59,7 +59,7 @@ class SleepControllerTest {
     void recordSleep_withTimeString_shouldCallServiceAndReturnResult() throws Exception {
         SleepController.SleepInput sleepInput = new SleepController.SleepInput();
         sleepInput.setTimeSlept("8:30");
-        when(sleepService.recordSleep("default-user","8:30")).thenReturn(new SleepState(0.0, 1.0));
+        when(sleepService.recordSleep("8:30")).thenReturn(new SleepState(0.0, 1.0));
 
         mockMvc.perform(post("/api/sleep")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -68,7 +68,7 @@ class SleepControllerTest {
                 .andExpect(jsonPath("$.sleepDebt", is(0.0)))
                 .andExpect(jsonPath("$.sleepSurplus", is(1.0)));
 
-        Mockito.verify(sleepService).recordSleep("default-user","8:30");
+        Mockito.verify(sleepService).recordSleep("8:30");
     }
 
     @Test
@@ -76,7 +76,7 @@ class SleepControllerTest {
     void recordSleep_whenInputNegative_thenReturnBadRequest() throws Exception {
         SleepController.SleepInput sleepInput = new SleepController.SleepInput();
         sleepInput.setTimeSlept("-1:00");
-        when(sleepService.recordSleep(anyString(), anyString())).thenThrow(new IllegalArgumentException("Hours slept cannot be negative."));
+        when(sleepService.recordSleep(anyString())).thenThrow(new IllegalArgumentException("Hours slept cannot be negative."));
 
         mockMvc.perform(post("/api/sleep")
                         .contentType(MediaType.APPLICATION_JSON)
