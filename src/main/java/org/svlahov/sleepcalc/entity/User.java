@@ -2,8 +2,6 @@ package org.svlahov.sleepcalc.entity;
 
 import jakarta.persistence.*;
 
-import java.util.ArrayList;
-
 @Entity
 @Table(name = "app_users")
 public class User {
