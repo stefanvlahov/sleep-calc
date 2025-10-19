@@ -12,6 +12,7 @@ import org.svlahov.sleepcalc.entity.SleepData;
 import org.svlahov.sleepcalc.entity.User;
 import org.svlahov.sleepcalc.repository.SleepDataRepository;
 import org.svlahov.sleepcalc.repository.UserRepository;
+import org.svlahov.sleepcalc.support.TestJwtDynamicProps;
 
 import java.math.BigDecimal;
 import java.util.Optional;
@@ -23,7 +24,7 @@ import static org.mockito.Mockito.when;
 
 @SpringBootTest
 @ActiveProfiles("test")
-public class SleepServiceTest {
+public class SleepServiceTest extends TestJwtDynamicProps {
 
     @MockitoBean
     private SleepDataRepository sleepDataRepository;
