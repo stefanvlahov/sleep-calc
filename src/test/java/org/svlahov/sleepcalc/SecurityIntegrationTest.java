@@ -12,6 +12,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 import org.svlahov.sleepcalc.controller.AuthController;
+import org.svlahov.sleepcalc.support.TestJwtDynamicProps;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -22,7 +23,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @Transactional
 @ActiveProfiles("test")
-public class SecurityIntegrationTest {
+public class SecurityIntegrationTest extends TestJwtDynamicProps {
 
     @Autowired
     private MockMvc mockMvc;

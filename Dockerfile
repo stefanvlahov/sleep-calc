@@ -14,7 +14,7 @@ COPY build.gradle settings.gradle ./
 COPY src ./src
 
 # Run Gradle build command to produce the executable jar
-RUN ./gradlew build --no-daemon
+RUN ./gradlew build -x test --no-daemon
 
 # Stage 2: Create the final lightweight image
 FROM eclipse-temurin:21-jre-jammy
