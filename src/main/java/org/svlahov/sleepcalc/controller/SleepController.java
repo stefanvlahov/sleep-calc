@@ -1,6 +1,9 @@
 package org.svlahov.sleepcalc.controller;
 
 import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDate;
+
 import org.svlahov.sleepcalc.service.SleepService;
 import org.svlahov.sleepcalc.service.SleepService.SleepState;
 
@@ -21,11 +24,12 @@ public class SleepController {
 
     @PostMapping
     public SleepState recordSleep(@RequestBody SleepInput sleepInput) {
-        return sleepService.recordSleep(sleepInput.getTimeSlept());
+        return sleepService.recordSleep(sleepInput.getTimeSlept(), sleepInput.getDate());
     }
 
     public static class SleepInput {
         private String timeSlept;
+        private LocalDate date;
 
         public String getTimeSlept() {
             return timeSlept;
@@ -33,6 +37,14 @@ public class SleepController {
 
         public void setTimeSlept(String timeSlept) {
             this.timeSlept = timeSlept;
+        }
+
+        public LocalDate getDate() {
+            return date;
+        }
+
+        public void setDate(LocalDate date) {
+            this.date = date;
         }
     }
 }

@@ -11,6 +11,7 @@ import org.svlahov.sleepcalc.repository.UserRepository;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalTime;
+import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 
@@ -46,13 +47,16 @@ public class SleepServiceImpl implements SleepService {
     }
 
     @Override
-    public SleepState recordSleep(String timeSlept) {
+    public SleepState recordSleep(String timeSlept, LocalDate date) {
         User currentUser = getCurrentUser();
         SleepData data = sleepDataRepository.findByUser_Username(currentUser.getUsername())
-                .orElseGet(() -> new SleepData(currentUser));
+                .orElseGet(() -> new SleepData(currentUser, date));
+
+        if (data.getId() != null) {
+            data.setSleepDate(date);
+        }
 
         BigDecimal hoursSleptDecimal = parseTimeSleptToDecimal(timeSlept);
-
         BigDecimal sleepDifference = hoursSleptDecimal.subtract(TARGET_SLEEP_HOURS);
 
         if (sleepDifference.compareTo(ZERO) > 0) {
