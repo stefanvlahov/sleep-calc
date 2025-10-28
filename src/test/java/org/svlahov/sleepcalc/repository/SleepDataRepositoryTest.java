@@ -9,6 +9,7 @@ import org.svlahov.sleepcalc.entity.SleepData;
 import org.svlahov.sleepcalc.entity.User;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -28,7 +29,7 @@ public class SleepDataRepositoryTest {
         User testUser = new User("testuser", "password");
         entityManager.persistAndFlush(testUser);
 
-        SleepData newSleepData = new SleepData(testUser);
+        SleepData newSleepData = new SleepData(testUser, LocalDate.now());
         newSleepData.setSleepDebt(new BigDecimal("5.0"));
         entityManager.persistAndFlush(newSleepData);
 
@@ -37,6 +38,7 @@ public class SleepDataRepositoryTest {
         assertTrue(foundData.isPresent(), "SleepData should be found for the existing user");
         assertEquals("testuser", foundData.get().getUser().getUsername());
         assertEquals(0, new BigDecimal("5.0").compareTo(foundData.get().getSleepDebt()));
+        assertNotNull(foundData.get().getSleepDate());
     }
 
     @Test
