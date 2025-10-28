@@ -1,6 +1,7 @@
 package org.svlahov.sleepcalc.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -16,8 +17,12 @@ import org.svlahov.sleepcalc.exception.RestExceptionHandler;
 import org.svlahov.sleepcalc.service.SleepService;
 import org.svlahov.sleepcalc.service.SleepService.SleepState;
 
+import java.time.LocalDate;
+
 import static org.hamcrest.Matchers.is;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -36,8 +41,11 @@ class SleepControllerTest {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    private final LocalDate testDate = LocalDate.now();
+
     @BeforeEach
     public void setup() {
+        objectMapper.registerModule(new JavaTimeModule());
         mockMvc = MockMvcBuilders.standaloneSetup(sleepController)
                 .setControllerAdvice(new RestExceptionHandler()).build();
     }
@@ -59,7 +67,9 @@ class SleepControllerTest {
     void recordSleep_withTimeString_shouldCallServiceAndReturnResult() throws Exception {
         SleepController.SleepInput sleepInput = new SleepController.SleepInput();
         sleepInput.setTimeSlept("8:30");
-        when(sleepService.recordSleep("8:30")).thenReturn(new SleepState(0.0, 1.0));
+        sleepInput.setDate(testDate);
+
+        when(sleepService.recordSleep(eq("8:30"), eq(testDate))).thenReturn(new SleepState(0.0, 1.0));
 
         mockMvc.perform(post("/api/sleep")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -68,20 +78,22 @@ class SleepControllerTest {
                 .andExpect(jsonPath("$.sleepDebt", is(0.0)))
                 .andExpect(jsonPath("$.sleepSurplus", is(1.0)));
 
-        Mockito.verify(sleepService).recordSleep("8:30");
+        Mockito.verify(sleepService).recordSleep(eq("8:30"), eq(testDate));
     }
 
     @Test
     @DisplayName("POST /api/sleep should return 400 if input is negative")
     void recordSleep_whenInputNegative_thenReturnBadRequest() throws Exception {
         SleepController.SleepInput sleepInput = new SleepController.SleepInput();
-        sleepInput.setTimeSlept("-1:00");
-        when(sleepService.recordSleep(anyString())).thenThrow(new IllegalArgumentException("Hours slept cannot be negative."));
+        sleepInput.setTimeSlept("invalid time");
+        sleepInput.setDate(testDate);
+        when(sleepService.recordSleep(anyString(), any(LocalDate.class))).thenThrow(new IllegalArgumentException("Invalid Format"));
 
         mockMvc.perform(post("/api/sleep")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(sleepInput)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message", is("Invalid Format")));
     }
 
 }
