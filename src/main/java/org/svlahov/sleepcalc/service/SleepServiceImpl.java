@@ -14,6 +14,7 @@ import java.time.LocalTime;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.Optional;
 
 @Service
 public class SleepServiceImpl implements SleepService {
@@ -29,6 +30,8 @@ public class SleepServiceImpl implements SleepService {
     private static final BigDecimal ZERO = BigDecimal.ZERO;
     private static final BigDecimal ONE = BigDecimal.ONE;
 
+    private record CumulativeState(BigDecimal sleepDebt, BigDecimal sleepSurplus) {}
+
     // Current state
     private final SleepDataRepository sleepDataRepository;
     private final UserRepository userRepository;
@@ -41,7 +44,7 @@ public class SleepServiceImpl implements SleepService {
     @Override
     public SleepState getCurrentSleepState() {
         User currentUser = getCurrentUser();
-        return sleepDataRepository.findByUser_Username(currentUser.getUsername())
+        return sleepDataRepository.findTopByUser_UsernameOrderBySleepDateDesc(currentUser.getUsername())
                 .map(data -> new SleepState(formatDebtValue(data.getSleepDebt()), formatDebtValue(data.getSleepSurplus())))
                 .orElse(new SleepState(0.0, 0.0));
     }
@@ -49,23 +52,27 @@ public class SleepServiceImpl implements SleepService {
     @Override
     public SleepState recordSleep(String timeSlept, LocalDate date) {
         User currentUser = getCurrentUser();
-        SleepData data = sleepDataRepository.findByUser_Username(currentUser.getUsername())
-                .orElseGet(() -> new SleepData(currentUser, date));
-
-        if (data.getId() != null) {
-            data.setSleepDate(date);
-        }
-
         BigDecimal hoursSleptDecimal = parseTimeSleptToDecimal(timeSlept);
+
+        Optional<SleepData> latestEntry = sleepDataRepository.findTopByUser_UsernameOrderBySleepDateDesc(currentUser.getUsername());
+        CumulativeState previousState = latestEntry
+                .map(data -> new CumulativeState(data.getSleepDebt(), data.getSleepSurplus()))
+                .orElse(new CumulativeState(ZERO, ZERO));
+
         BigDecimal sleepDifference = hoursSleptDecimal.subtract(TARGET_SLEEP_HOURS);
+        CumulativeState newState;
 
         if (sleepDifference.compareTo(ZERO) > 0) {
-            applyExtraSleep(data, sleepDifference);
+            newState = applyExtraSleep(previousState, sleepDifference);
         } else if (sleepDifference.compareTo(ZERO) < 0) {
-            applySleepShortfall(data, sleepDifference.negate());
+            newState = applySleepShortfall(previousState, sleepDifference.negate());
+        } else {
+            newState = previousState;
         }
 
-        SleepData savedData = sleepDataRepository.save(data);
+        SleepData newSleepEntry = new SleepData(currentUser, date, hoursSleptDecimal, newState.sleepDebt(), newState.sleepSurplus());
+
+        SleepData savedData = sleepDataRepository.save(newSleepEntry);
         return new SleepState(formatDebtValue(savedData.getSleepDebt()), formatDebtValue(savedData.getSleepSurplus()));
     }
 
@@ -126,36 +133,39 @@ public class SleepServiceImpl implements SleepService {
         }
     }
 
-    private void applyExtraSleep(SleepData data, BigDecimal extraSleep) {
-        BigDecimal currentDebt = data.getSleepDebt();
+    private CumulativeState applyExtraSleep(CumulativeState previousState, BigDecimal extraSleep) {
+        BigDecimal currentDebt = previousState.sleepDebt();
+        BigDecimal currentSurplus = previousState.sleepSurplus();
 
         if (currentDebt.compareTo(ZERO) <= 0) {
-            data.setSleepSurplus(data.getSleepSurplus().add(extraSleep));
-            return;
+            return new CumulativeState(currentDebt, currentSurplus.add(extraSleep));
         }
 
         BigDecimal recoveryFactor = calculateRecoveryFactor(currentDebt);
         BigDecimal debtReductionAmount = extraSleep.multiply(recoveryFactor);
 
         BigDecimal actualDebtPaid = debtReductionAmount.min(currentDebt);
-        data.setSleepDebt(currentDebt.subtract(actualDebtPaid));
+        BigDecimal newDebt = currentDebt.subtract(actualDebtPaid);
 
         BigDecimal sleepPowerUsed = (recoveryFactor.compareTo(ZERO) > 0) ? actualDebtPaid.divide(recoveryFactor, 4, RoundingMode.HALF_UP) : ZERO;
-
         BigDecimal surplusToAdd = extraSleep.subtract(sleepPowerUsed).max(ZERO);
 
-        if (surplusToAdd.compareTo(ZERO) > 0) {
-            data.setSleepSurplus(data.getSleepSurplus().add(surplusToAdd));
-        }
+        BigDecimal newSurplus = currentSurplus.add(surplusToAdd);
+
+        return new CumulativeState(newDebt, newSurplus);
     }
 
-    private void applySleepShortfall(SleepData data, BigDecimal shortfall) {
-        BigDecimal currentSurplus = data.getSleepSurplus();
+    private CumulativeState applySleepShortfall(CumulativeState previousState, BigDecimal shortfall) {
+        BigDecimal currentDebt = previousState.sleepDebt();
+        BigDecimal currentSurplus = previousState.sleepSurplus();
+
         BigDecimal surplusToUse = shortfall.min(currentSurplus);
-        data.setSleepSurplus(currentSurplus.subtract(surplusToUse));
+        BigDecimal newSurplus = currentSurplus.subtract(surplusToUse);
 
         BigDecimal remainingShortfall = shortfall.subtract(surplusToUse);
-        data.setSleepDebt(data.getSleepDebt().add(remainingShortfall));
+        BigDecimal newDebt = currentDebt.add(remainingShortfall);
+
+        return new CumulativeState(newDebt, newSurplus);
     }
 
     private BigDecimal calculateRecoveryFactor(BigDecimal currentDebt) {
