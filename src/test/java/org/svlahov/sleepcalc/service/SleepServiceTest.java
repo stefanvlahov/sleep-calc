@@ -39,15 +39,8 @@ public class SleepServiceTest extends TestJwtDynamicProps {
 
     private final LocalDate testDate = LocalDate.now();
 
-    private SleepData createSleepData(User user) {
-        return new SleepData(user, testDate);
-    }
-
-    private SleepData createSleepData(User user, String debt, String surplus) {
-        SleepData data = new SleepData(user, testDate);
-        data.setSleepDebt(new BigDecimal(debt));
-        data.setSleepSurplus(new BigDecimal(surplus));
-        return data;
+    private SleepData createTestSleepData(User user, BigDecimal debt, BigDecimal surplus) {
+        return new SleepData(user, testDate.minusDays(1), new BigDecimal("8.0"), debt, surplus);
     }
 
     @Test
@@ -82,7 +75,7 @@ public class SleepServiceTest extends TestJwtDynamicProps {
     void recordSleep_withExtraSleepAsStringAndNoDebt_increaseSurplus() {
         User user = new User("rested-user", "password");
         when(userRepository.findByUsername("rested-user")).thenReturn(Optional.of(user));
-        when(sleepDataRepository.findByUser_Username("rested-user")).thenReturn(Optional.empty());
+        when(sleepDataRepository.findTopByUser_UsernameOrderBySleepDateDesc("rested-user")).thenReturn(Optional.empty());
 
         when(sleepDataRepository.save(any(SleepData.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
@@ -94,6 +87,7 @@ public class SleepServiceTest extends TestJwtDynamicProps {
 
         ArgumentCaptor<SleepData> captor = ArgumentCaptor.forClass(SleepData.class);
         verify(sleepDataRepository).save(captor.capture());
+        assertEquals(new BigDecimal("9.50"), captor.getValue().getHoursSlept());
         assertEquals(testDate, captor.getValue().getSleepDate());
     }
 
@@ -103,9 +97,8 @@ public class SleepServiceTest extends TestJwtDynamicProps {
     void recordSleep_withShortFallAsStringAndSurplus_decreasesSurplus() {
         User user = new User("surplus-user", "password");
         when(userRepository.findByUsername("surplus-user")).thenReturn(Optional.of(user));
-        SleepData existingData = createSleepData(user,"0.0", "3.0");
-        existingData.setSleepSurplus(new BigDecimal("3.0"));
-        when(sleepDataRepository.findByUser_Username("surplus-user")).thenReturn(Optional.of(existingData));
+        SleepData existingData = createTestSleepData(user, new BigDecimal("0.0"), new BigDecimal("3.0"));
+        when(sleepDataRepository.findTopByUser_UsernameOrderBySleepDateDesc("surplus-user")).thenReturn(Optional.of(existingData));
 
         when(sleepDataRepository.save(any(SleepData.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
@@ -122,8 +115,8 @@ public class SleepServiceTest extends TestJwtDynamicProps {
     void recordSleep_withLargeShortfallAsString_depletesSurplusAndIncreasesDebt() {
         User user = new User("user-in-trouble", "password");
         when(userRepository.findByUsername("user-in-trouble")).thenReturn(Optional.of(user));
-        SleepData existingData = createSleepData(user, "0.0", "1.0");
-        when(sleepDataRepository.findByUser_Username("user-in-trouble")).thenReturn(Optional.of(existingData));
+        SleepData existingData = createTestSleepData(user, new BigDecimal("0.0"), new BigDecimal("1.0"));
+        when(sleepDataRepository.findTopByUser_UsernameOrderBySleepDateDesc("user-in-trouble")).thenReturn(Optional.of(existingData));
         when(sleepDataRepository.save(any(SleepData.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -139,8 +132,8 @@ public class SleepServiceTest extends TestJwtDynamicProps {
     void recordSleep_withExtraSleepString_PayDownDebtBeforeSurplus() {
         User user = new User("paying-debt", "password");
         when(userRepository.findByUsername("paying-debt")).thenReturn(Optional.of(user));
-        SleepData existingData = createSleepData(user, "1.0", "0.0");
-        when(sleepDataRepository.findByUser_Username("paying-debt")).thenReturn(Optional.of(existingData));
+        SleepData existingData = createTestSleepData(user, new BigDecimal("1.0"), new BigDecimal("0.0"));
+        when(sleepDataRepository.findTopByUser_UsernameOrderBySleepDateDesc("paying-debt")).thenReturn(Optional.of(existingData));
 
         when(sleepDataRepository.save(any(SleepData.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
@@ -157,9 +150,9 @@ public class SleepServiceTest extends TestJwtDynamicProps {
     void getCurrentSleepState_forExistingUser_returnsDebt() {
         User user = new User("test-user", "password");
         when(userRepository.findByUsername("test-user")).thenReturn(Optional.of(user));
-        SleepData existingData = createSleepData(user, "10.5", "0.0");
+        SleepData existingData = createTestSleepData(user, new BigDecimal("10.5"), BigDecimal.ZERO);
 
-        when(sleepDataRepository.findByUser_Username("test-user")).thenReturn(Optional.of(existingData));
+        when(sleepDataRepository.findTopByUser_UsernameOrderBySleepDateDesc("test-user")).thenReturn(Optional.of(existingData));
 
         SleepService.SleepState state = sleepService.getCurrentSleepState();
 
@@ -174,7 +167,7 @@ public class SleepServiceTest extends TestJwtDynamicProps {
     void getCurrentSleepState_forNewUser_returnsZeroState() {
         User user = new User("new-user", "password");
         when(userRepository.findByUsername("new-user")).thenReturn(Optional.of(user));
-        when(sleepDataRepository.findByUser_Username("new-user")).thenReturn(Optional.empty());
+        when(sleepDataRepository.findTopByUser_UsernameOrderBySleepDateDesc("new-user")).thenReturn(Optional.empty());
 
         SleepService.SleepState state = sleepService.getCurrentSleepState();
 
@@ -189,7 +182,7 @@ public class SleepServiceTest extends TestJwtDynamicProps {
     void recordSleep_forNewUser_createsAndCalculatesDebt() {
         User user = new User("new-user", "password");
         when(userRepository.findByUsername("new-user")).thenReturn(Optional.of(user));
-        when(sleepDataRepository.findByUser_Username("new-user")).thenReturn(Optional.empty());
+        when(sleepDataRepository.findTopByUser_UsernameOrderBySleepDateDesc("new-user")).thenReturn(Optional.empty());
 
         when(sleepDataRepository.save(any(SleepData.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
@@ -212,9 +205,9 @@ public class SleepServiceTest extends TestJwtDynamicProps {
     void recordSleep_forExistingUser_updatesAndCalculatesDebt() {
         User user = new User("high-debt-user", "password");
         when(userRepository.findByUsername("high-debt-user")).thenReturn(Optional.of(user));
-        SleepData existingData = createSleepData(user, "5.0", "0.0");
+        SleepData existingData = createTestSleepData(user, new BigDecimal("5.0"), BigDecimal.ZERO);
 
-        when(sleepDataRepository.findByUser_Username("high-debt-user")).thenReturn(Optional.of(existingData));
+        when(sleepDataRepository.findTopByUser_UsernameOrderBySleepDateDesc("high-debt-user")).thenReturn(Optional.of(existingData));
 
         when(sleepDataRepository.save(any(SleepData.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));

@@ -16,18 +16,26 @@ public class SleepData {
     private User user;
 
     @Column(nullable = false)
-    private LocalDate sleepDate;
+    private BigDecimal hoursSlept;
 
+    @Column(nullable = false)
     private BigDecimal sleepDebt = BigDecimal.ZERO;
+
+    @Column(nullable = false)
     private BigDecimal sleepSurplus = BigDecimal.ZERO;
 
+    @Column(nullable = false)
+    private LocalDate sleepDate;
 
     protected SleepData() {
     }
 
-    public SleepData(User user, LocalDate sleepDate) {
+    public SleepData(User user, LocalDate sleepDate, BigDecimal hoursSlept, BigDecimal sleepDebt, BigDecimal sleepSurplus) {
         this.user = user;
         this.sleepDate = sleepDate;
+        this.hoursSlept = hoursSlept;
+        this.sleepDebt = sleepDebt;
+        this.sleepSurplus = sleepSurplus;
     }
 
     // --- Getters and Setters ---
@@ -47,6 +55,10 @@ public class SleepData {
     public void setUser(User user) {
         this.user = user;
     }
+
+    public BigDecimal getHoursSlept() { return hoursSlept; }
+
+    public void setHoursSlept(BigDecimal hoursSlept) { this.hoursSlept = hoursSlept; }
 
     public BigDecimal getSleepDebt() {
         return sleepDebt;
