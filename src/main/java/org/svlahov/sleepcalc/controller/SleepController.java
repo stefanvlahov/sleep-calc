@@ -3,9 +3,11 @@ package org.svlahov.sleepcalc.controller;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.List;
 
 import org.svlahov.sleepcalc.service.SleepService;
 import org.svlahov.sleepcalc.service.SleepService.SleepState;
+import org.svlahov.sleepcalc.service.SleepService.SleepHistoryEntry;
 
 @RestController
 @RequestMapping("api/sleep")
@@ -20,6 +22,11 @@ public class SleepController {
     @GetMapping("/state")
     public SleepState getCurrentSleepState() {
         return sleepService.getCurrentSleepState();
+    }
+
+    @GetMapping("/history")
+    public List<SleepHistoryEntry> getSleepHistory() {
+        return sleepService.getSleepHistory();
     }
 
     @PostMapping

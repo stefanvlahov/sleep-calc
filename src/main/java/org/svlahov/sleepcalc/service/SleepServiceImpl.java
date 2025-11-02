@@ -12,9 +12,11 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalTime;
 import java.time.LocalDate;
+import java.util.List;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class SleepServiceImpl implements SleepService {
@@ -39,6 +41,21 @@ public class SleepServiceImpl implements SleepService {
     public SleepServiceImpl(SleepDataRepository sleepDataRepository, UserRepository userRepository) {
         this.sleepDataRepository = sleepDataRepository;
         this.userRepository = userRepository;
+    }
+
+    @Override
+    public List<SleepHistoryEntry> getSleepHistory() {
+        User currentUser = getCurrentUser();
+
+        List<SleepData> recentEntries = sleepDataRepository.findTop5ByUser_UsernameOrderBySleepDateDesc(currentUser.getUsername());
+
+        return recentEntries.stream()
+                .map(this::mapToHistoryEntry)
+                .collect(Collectors.toList());
+    }
+
+    private SleepHistoryEntry mapToHistoryEntry(SleepData data) {
+        return new SleepHistoryEntry(data.getSleepDate(), formatDebtValue(data.getHoursSlept()), formatDebtValue(data.getSleepDebt()), formatDebtValue(data.getSleepSurplus()));
     }
 
     @Override
