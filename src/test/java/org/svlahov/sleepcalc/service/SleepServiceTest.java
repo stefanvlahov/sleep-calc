@@ -243,13 +243,16 @@ public class SleepServiceTest extends TestJwtDynamicProps {
                 createFullTestSleepData(user, previousDate, new BigDecimal("7.0"), new BigDecimal("1.5"), BigDecimal.ZERO)
         );
 
+        when(sleepDataRepository.findTop5ByUser_UsernameOrderBySleepDateDesc("history-user"))
+                .thenReturn(mockDataList);
+
         List<SleepService.SleepHistoryEntry> history = sleepService.getSleepHistory();
 
         assertNotNull(history);
         assertEquals(2, history.size());
 
         assertEquals(testDate, history.get(0).sleepDate());
-        assertEquals(0.0, history.get(0).hoursSlept());
+        assertEquals(8.0, history.get(0).hoursSlept());
         assertEquals(1.0, history.get(0).sleepDebt());
         assertEquals(0.5, history.get(0).sleepSurplus());
 
