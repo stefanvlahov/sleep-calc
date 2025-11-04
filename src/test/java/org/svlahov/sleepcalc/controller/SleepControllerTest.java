@@ -16,13 +16,16 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.svlahov.sleepcalc.exception.RestExceptionHandler;
 import org.svlahov.sleepcalc.service.SleepService;
 import org.svlahov.sleepcalc.service.SleepService.SleepState;
+import org.svlahov.sleepcalc.service.SleepService.SleepHistoryEntry;
 
-import java.time.LocalDate; // 2. Import LocalDate
+import java.time.LocalDate;
+import java.util.List;
 
 import static org.hamcrest.Matchers.is;
-import static org.mockito.ArgumentMatchers.any; // Import any
+import static org.hamcrest.Matchers.hasSize;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq; // Import eq
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -44,7 +47,6 @@ class SleepControllerTest {
 
     @BeforeEach
     public void setup() {
-        // 3. Register JavaTimeModule so ObjectMapper can handle LocalDate
         objectMapper.registerModule(new JavaTimeModule());
         mockMvc = MockMvcBuilders.standaloneSetup(sleepController)
                 .setControllerAdvice(new RestExceptionHandler()).build();
@@ -65,12 +67,10 @@ class SleepControllerTest {
     @Test
     @DisplayName("POST /api/sleep should accept time string and date, and call service")
     void recordSleep_withTimeStringAndDate_shouldCallServiceAndReturnResult() throws Exception {
-        // 4. Update SleepInput to include date
         SleepController.SleepInput sleepInput = new SleepController.SleepInput();
         sleepInput.setTimeSlept("8:30");
         sleepInput.setDate(testDate); // Add the date
 
-        // 5. Update mock service call to expect the date
         when(sleepService.recordSleep(eq("8:30"), eq(testDate))).thenReturn(new SleepState(0.0, 1.0));
 
         mockMvc.perform(post("/api/sleep")
@@ -80,19 +80,16 @@ class SleepControllerTest {
                 .andExpect(jsonPath("$.sleepDebt", is(0.0)))
                 .andExpect(jsonPath("$.sleepSurplus", is(1.0)));
 
-        // 6. Verify the service was called correctly
         Mockito.verify(sleepService).recordSleep(eq("8:30"), eq(testDate));
     }
 
     @Test
     @DisplayName("POST /api/sleep should return 400 if service throws error")
     void recordSleep_whenServiceThrowsError_thenReturnBadRequest() throws Exception {
-        // 7. Update SleepInput to include date
         SleepController.SleepInput sleepInput = new SleepController.SleepInput();
         sleepInput.setTimeSlept("-1:00");
         sleepInput.setDate(testDate);
 
-        // 8. Update mock service call to expect any date
         when(sleepService.recordSleep(anyString(), any(LocalDate.class)))
                 .thenThrow(new IllegalArgumentException("Hours slept cannot be negative."));
 
@@ -101,5 +98,25 @@ class SleepControllerTest {
                         .content(objectMapper.writeValueAsString(sleepInput)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message", is("Hours slept cannot be negative.")));
+    }
+
+    @Test
+    @DisplayName("GET /api/sleep/history should return a list of sleep entries")
+    void getSleephistory_shouldReturnHistoryList() throws Exception {
+
+        List<SleepHistoryEntry> historyList = List.of(
+                new SleepHistoryEntry(LocalDate.now(), 8.0, 0.0, 0.5),
+                new SleepHistoryEntry(LocalDate.now().minusDays(1), 7.0, 0.5, 0.0)
+        );
+        when(sleepService.getSleepHistory()).thenReturn(historyList);
+
+        mockMvc.perform(get("/api/sleep/history"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$", hasSize(2)))
+                .andExpect(jsonPath("$[0].sleepDate", is(LocalDate.now().toString())))
+                .andExpect(jsonPath("$[0].hoursSlept", is(8.0)))
+                .andExpect(jsonPath("$[1].sleepDate", is(LocalDate.now().minusDays(1).toString())))
+                .andExpect(jsonPath("$[1].hoursSlept", is(7.0)));
     }
 }

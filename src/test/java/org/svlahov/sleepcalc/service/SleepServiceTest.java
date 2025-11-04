@@ -17,6 +17,7 @@ import org.svlahov.sleepcalc.support.TestJwtDynamicProps;
 import java.math.BigDecimal;
 import java.util.Optional;
 import java.time.LocalDate;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -38,9 +39,14 @@ public class SleepServiceTest extends TestJwtDynamicProps {
     private SleepServiceImpl sleepService;
 
     private final LocalDate testDate = LocalDate.now();
+    private final LocalDate previousDate = testDate.minusDays(1);
 
     private SleepData createTestSleepData(User user, BigDecimal debt, BigDecimal surplus) {
-        return new SleepData(user, testDate.minusDays(1), new BigDecimal("8.0"), debt, surplus);
+        return new SleepData(user, previousDate, new BigDecimal("7.5"), debt, surplus);
+    }
+
+    private SleepData createFullTestSleepData(User user, LocalDate date, BigDecimal hours, BigDecimal debt, BigDecimal surplus) {
+        return new SleepData(user, date, hours, debt, surplus);
     }
 
     @Test
@@ -223,5 +229,34 @@ public class SleepServiceTest extends TestJwtDynamicProps {
         SleepData savedData = sleepDataCaptor.getValue();
         assertEquals(0, new BigDecimal("3.35").compareTo(savedData.getSleepDebt()));
         assertEquals(0, BigDecimal.ZERO.compareTo(savedData.getSleepSurplus()));
+    }
+
+    @Test
+    @DisplayName("getSleepHistory should return a list of mapped DTOs in order")
+    @WithMockUser(username = "history-user")
+    void getSleepHistory_shouldReturnMappedDTOList() {
+        User user = new User("history-user", "password");
+        when(userRepository.findByUsername("history-user")).thenReturn(Optional.of(user));
+
+        List<SleepData> mockDataList = List.of(
+                createFullTestSleepData(user, testDate, new BigDecimal("8.0"), new BigDecimal("1.0"), new BigDecimal("0.5")),
+                createFullTestSleepData(user, previousDate, new BigDecimal("7.0"), new BigDecimal("1.5"), BigDecimal.ZERO)
+        );
+
+        when(sleepDataRepository.findTop5ByUser_UsernameOrderBySleepDateDesc("history-user"))
+                .thenReturn(mockDataList);
+
+        List<SleepService.SleepHistoryEntry> history = sleepService.getSleepHistory();
+
+        assertNotNull(history);
+        assertEquals(2, history.size());
+
+        assertEquals(testDate, history.get(0).sleepDate());
+        assertEquals(8.0, history.get(0).hoursSlept());
+        assertEquals(1.0, history.get(0).sleepDebt());
+        assertEquals(0.5, history.get(0).sleepSurplus());
+
+        assertEquals(previousDate, history.get(1).sleepDate());
+        assertEquals(7.0, history.get(1).hoursSlept());
     }
 }
