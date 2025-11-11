@@ -65,6 +65,7 @@ The application now features a comprehensive JWT-based authentication system tha
 | Method | Endpoint | Description | Authentication Required |
 |--------|----------|-------------|------------------------|
 | GET | `/api/sleep/state` | Returns the current user's sleep state | Yes (JWT Token) |
+| GET | `/api/sleep/history` | Returns the last 5 recorded sleep entries for the current user | Yes (JWT Token) |
 | POST | `/api/sleep` | Records sleep hours for the authenticated user | Yes (JWT Token) |
 
 **Note**: All sleep tracking endpoints now require a valid JWT token in the Authorization header.
@@ -120,7 +121,7 @@ Response:
 ```bash
 curl -X POST http://localhost:8080/api/sleep \
   -H "Content-Type: application/json" \
-  -d '{"timeSlept": "8:30"}'
+  -d '{"timeSlept": "8:30", "date": "2025-11-10"}'
 ```
 Response:
 ```json
@@ -134,7 +135,7 @@ Response:
 ```bash
 curl -X POST http://localhost:8080/api/sleep \
   -H "Content-Type: application/json" \
-  -d '{"timeSlept": "8.5"}'
+  -d '{"timeSlept": "8.5", "date": "2025-11-10"}'
 ```
 Response:
 ```json
@@ -143,6 +144,38 @@ Response:
   "sleepSurplus": 0.0
 }
 ```
+
+Note:
+- The `date` field is required and must be in `yyyy-MM-dd` format.
+- The `timeSlept` field accepts either `HH:mm` (e.g., `8:30`) or decimal hours (e.g., `8.5`).
+
+#### Get Sleep History (Last 5 entries):
+```bash
+curl -X GET http://localhost:8080/api/sleep/history \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+```
+Response:
+```json
+[
+  {
+    "sleepDate": "2025-11-10",
+    "hoursSlept": 8.5,
+    "sleepDebt": 1.8,
+    "sleepSurplus": 0.0
+  },
+  {
+    "sleepDate": "2025-11-09",
+    "hoursSlept": 6.0,
+    "sleepDebt": 3.3,
+    "sleepSurplus": 0.0
+  }
+]
+```
+
+Sleep history details:
+- Returns up to the 5 most recent entries for the authenticated user, ordered by `sleepDate` descending.
+- Each entry includes: `sleepDate` (yyyy-MM-dd), `hoursSlept` (decimal hours), `sleepDebt`, and `sleepSurplus` after that day's sleep is applied.
+- Numeric values are rounded to two decimals.
 
 ### Authentication Examples
 
@@ -185,7 +218,7 @@ curl -X GET http://localhost:8080/api/sleep/state \
 curl -X POST http://localhost:8080/api/sleep \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
-  -d '{"timeSlept": "8:30"}'
+  -d '{"timeSlept": "8:30", "date": "2025-11-10"}'
 ```
 
 ### Usage Scenarios
@@ -276,7 +309,7 @@ spring.jpa.show-sql=false
 
 ### Future Enhancements
 
-- Front-end website developed in React.js
+- ✅ Front-end website developed in React.js
 - ✅ **User authentication and profiles** (COMPLETED)
 - Historical sleep data visualization and export
 - Sleep trend analysis and personalized recommendations
