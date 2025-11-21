@@ -87,4 +87,30 @@ public class SleepDataRepositoryTest {
         assertEquals(LocalDate.now().minusDays(1), recentEntries.get(0).getSleepDate());
         assertEquals(LocalDate.now().minusDays(5), recentEntries.get(4).getSleepDate(), "Last entry should be the 5th latest date");
     }
+
+    @Test
+    @DisplayName("findByUser_UsernameAndSleepDateBetween should return entries within range")
+    void findByUser_UsernameAndSleepDateBetween_shouldReturnEntriesWithinRange() {
+        // Arrange
+        LocalDate today = LocalDate.now();
+        LocalDate yesterday = today.minusDays(1);
+        LocalDate twoDaysAgo = today.minusDays(2);
+        LocalDate lastMonth = today.minusMonths(1);
+
+        // Create entries inside the range
+        persistSleepData(today, new BigDecimal("8.0"), BigDecimal.ZERO, BigDecimal.ZERO);
+        persistSleepData(yesterday, new BigDecimal("7.0"), BigDecimal.ZERO, BigDecimal.ZERO);
+        persistSleepData(twoDaysAgo, new BigDecimal("6.0"), BigDecimal.ZERO, BigDecimal.ZERO);
+
+        // Create an entry outside the range
+        persistSleepData(lastMonth, new BigDecimal("5.0"), BigDecimal.ZERO, BigDecimal.ZERO);
+
+        // Act: Search for the last 3 days
+        List<SleepData> result = sleepDataRepository.findByUser_UsernameAndSleepDateBetween("testuser", twoDaysAgo, today);
+
+        // Assert
+        assertEquals(3, result.size(), "Should find 3 entries in the date range");
+        assertTrue(result.stream().anyMatch(d -> d.getSleepDate().equals(today)));
+        assertFalse(result.stream().anyMatch(d -> d.getSleepDate().equals(lastMonth)), "Should not contain entry from last month");
+    }
 }
