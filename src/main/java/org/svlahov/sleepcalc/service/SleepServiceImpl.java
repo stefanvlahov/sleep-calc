@@ -93,6 +93,19 @@ public class SleepServiceImpl implements SleepService {
         return new SleepState(formatDebtValue(savedData.getSleepDebt()), formatDebtValue(savedData.getSleepSurplus()));
     }
 
+    @Override
+    public List<SleepHistoryEntry> getSleepHistory(LocalDate from, LocalDate to) {
+        User currentUser = getCurrentUser();
+
+        List<SleepData> entries = sleepDataRepository.findByUser_UsernameAndSleepDateBetween(
+                currentUser.getUsername(), from, to
+        );
+
+        return entries.stream()
+                .map(this::mapToHistoryEntry)
+                .collect(Collectors.toList());
+    }
+
     // Helper methods for improved readability
 
     private User getCurrentUser() {

@@ -5,6 +5,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.util.List;
 
+import org.springframework.format.annotation.DateTimeFormat;
 import org.svlahov.sleepcalc.service.SleepService;
 import org.svlahov.sleepcalc.service.SleepService.SleepState;
 import org.svlahov.sleepcalc.service.SleepService.SleepHistoryEntry;
@@ -27,6 +28,14 @@ public class SleepController {
     @GetMapping("/history")
     public List<SleepHistoryEntry> getSleepHistory() {
         return sleepService.getSleepHistory();
+    }
+
+    @GetMapping("/history/range")
+    public List<SleepHistoryEntry> getSleepHistoryRange(
+            @RequestParam("from") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam("to") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
+    ) {
+        return sleepService.getSleepHistory(from, to);
     }
 
     @PostMapping

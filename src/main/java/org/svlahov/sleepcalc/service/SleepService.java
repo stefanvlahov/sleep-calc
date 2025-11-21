@@ -20,4 +20,6 @@ public interface SleepService {
     SleepState getCurrentSleepState();
 
     List<SleepHistoryEntry> getSleepHistory();
+
+    List<SleepHistoryEntry> getSleepHistory(LocalDate from, LocalDate to);
 }

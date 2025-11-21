@@ -119,4 +119,31 @@ class SleepControllerTest {
                 .andExpect(jsonPath("$[1].sleepDate", is(LocalDate.now().minusDays(1).toString())))
                 .andExpect(jsonPath("$[1].hoursSlept", is(7.0)));
     }
+
+    @Test
+    @DisplayName("GET /api/sleep/history/range should return entries within date range")
+    void getSleepHistoryRange_shouldReturnEntries() throws Exception {
+        // Arrange
+        LocalDate from = LocalDate.now().minusDays(5);
+        LocalDate to = LocalDate.now();
+
+        List<SleepHistoryEntry> historyList = List.of(
+                new SleepHistoryEntry(to, 8.0, 0.0, 0.5),
+                new SleepHistoryEntry(from, 7.0, 0.5, 0.0)
+        );
+
+        when(sleepService.getSleepHistory(eq(from), eq(to))).thenReturn(historyList);
+
+        // Act & Assert
+        mockMvc.perform(get("/api/sleep/history/range")
+                .param("from", from.toString())
+                .param("to", to.toString()))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$", hasSize(2)))
+                .andExpect(jsonPath("$[0].sleepDate", is(to.toString())))
+                .andExpect(jsonPath("$[1].sleepDate", is(from.toString())));
+
+        Mockito.verify(sleepService).getSleepHistory(eq(from), eq(to));
+    }
 }
