@@ -259,4 +259,41 @@ public class SleepServiceTest extends TestJwtDynamicProps {
         assertEquals(previousDate, history.get(1).sleepDate());
         assertEquals(7.0, history.get(1).hoursSlept());
     }
+
+    @Test
+    @DisplayName("getSleepHistory with date range should return mapped entries")
+    @WithMockUser(username = "range-user")
+    void getSleepHistory_withDateRange_shouldReturnMappedEntries() {
+        User user = new User("range-user", "password");
+        when(userRepository.findByUsername("range-user")).thenReturn(Optional.of(user));
+
+        LocalDate from = LocalDate.now().minusDays(5);
+        LocalDate to = LocalDate.now();
+
+        List<SleepData> mockDataList = List.of(
+                createFullTestSleepData(user, to, new BigDecimal("8.0"), BigDecimal.ZERO, BigDecimal.ZERO),
+                createFullTestSleepData(user, from, new BigDecimal("6.0"), new BigDecimal("1.5"), BigDecimal.ZERO)
+        );
+
+        when(sleepDataRepository.findByUser_UsernameAndSleepDateBetween(eq("range-user"), eq(from), eq(to)))
+                .thenReturn(mockDataList);
+
+        // Act
+        List<SleepService.SleepHistoryEntry> history = sleepService.getSleepHistory(from, to);
+
+        // Assert
+        assertNotNull(history);
+        assertEquals(2, history.size());
+
+        // Verify the first entry
+        assertEquals(to, history.get(0).sleepDate());
+        assertEquals(8.0, history.get(0).hoursSlept());
+
+        // Verify the second entry
+        assertEquals(from, history.get(1).sleepDate());
+        assertEquals(6.0, history.get(1).hoursSlept());
+
+        // Verify the repository was called with the correct arguments
+        verify(sleepDataRepository).findByUser_UsernameAndSleepDateBetween(eq("range-user"), eq(from), eq(to));
+    }
 }
