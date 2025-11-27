@@ -18,6 +18,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static java.util.Objects.requireNonNull;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -25,57 +26,57 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("test")
 public class SecurityIntegrationTest extends TestJwtDynamicProps {
 
-    @Autowired
-    private MockMvc mockMvc;
+        @Autowired
+        private MockMvc mockMvc;
 
-    @Autowired
-    private ObjectMapper objectMapper;
+        @Autowired
+        private ObjectMapper objectMapper;
 
-    @Test
-    @DisplayName("POST /api/auth/register schould create a new user")
-    void register_shouldCreateUser() throws Exception {
-        AuthController.AuthRequest authRequest = new AuthController.AuthRequest();
-        authRequest.setUsername("testuser");
-        authRequest.setPassword("password");
+        @Test
+        @DisplayName("POST /api/auth/register schould create a new user")
+        void register_shouldCreateUser() throws Exception {
+                AuthController.AuthRequest authRequest = new AuthController.AuthRequest();
+                authRequest.setUsername("testuser");
+                authRequest.setPassword("password");
 
-        mockMvc.perform(post("/api/auth/register")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(authRequest)))
-                .andExpect(status().isOk());
-    }
+                mockMvc.perform(post("/api/auth/register")
+                                .contentType(requireNonNull(MediaType.APPLICATION_JSON))
+                                .content(requireNonNull(objectMapper.writeValueAsString(authRequest))))
+                                .andExpect(status().isOk());
+        }
 
-    @Test
-    @DisplayName("GET /api/sleep/state should be forbidden for unauthorized users")
-    void getSleepState_withoutAuth_shouldBeForbidden() throws Exception {
-        mockMvc.perform(get("/api/sleep/state"))
-                .andExpect(status().isForbidden());
-    }
+        @Test
+        @DisplayName("GET /api/sleep/state should be forbidden for unauthorized users")
+        void getSleepState_withoutAuth_shouldBeForbidden() throws Exception {
+                mockMvc.perform(get("/api/sleep/state"))
+                                .andExpect(status().isForbidden());
+        }
 
-    @Test
-    @DisplayName("A registered user should be able to log in and access secure endpoints")
-    void registeredUser_canLoginAndAccessSecureEndpoints() throws Exception {
-        AuthController.AuthRequest userCredentials = new AuthController.AuthRequest();
-        userCredentials.setUsername("logintest");
-        userCredentials.setPassword("password123");
+        @Test
+        @DisplayName("A registered user should be able to log in and access secure endpoints")
+        void registeredUser_canLoginAndAccessSecureEndpoints() throws Exception {
+                AuthController.AuthRequest userCredentials = new AuthController.AuthRequest();
+                userCredentials.setUsername("logintest");
+                userCredentials.setPassword("password123");
 
-        mockMvc.perform(post("/api/auth/register")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(userCredentials)))
-                .andExpect(status().isOk());
+                mockMvc.perform(post("/api/auth/register")
+                                .contentType(requireNonNull(MediaType.APPLICATION_JSON))
+                                .content(requireNonNull(objectMapper.writeValueAsString(userCredentials))))
+                                .andExpect(status().isOk());
 
-        MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(userCredentials)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.token").exists())
-                .andReturn();
+                MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
+                                .contentType(requireNonNull(MediaType.APPLICATION_JSON))
+                                .content(requireNonNull(objectMapper.writeValueAsString(userCredentials))))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.token").exists())
+                                .andReturn();
 
-        String responseBody = loginResult.getResponse().getContentAsString();
-        String token = objectMapper.readTree(responseBody).get("token").asText();
+                String responseBody = loginResult.getResponse().getContentAsString();
+                String token = objectMapper.readTree(responseBody).get("token").asText();
 
-        mockMvc.perform(get("/api/sleep/state")
-                .header("Authorization", "Bearer " + token))
-                .andExpect(status().isOk());
-    }
+                mockMvc.perform(get("/api/sleep/state")
+                                .header("Authorization", "Bearer " + token))
+                                .andExpect(status().isOk());
+        }
 
 }
