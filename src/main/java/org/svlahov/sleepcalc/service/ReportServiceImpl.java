@@ -12,8 +12,6 @@ import org.svlahov.sleepcalc.entity.User;
 import org.svlahov.sleepcalc.repository.SleepDataRepository;
 import org.svlahov.sleepcalc.repository.UserRepository;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.temporal.TemporalAdjusters;
