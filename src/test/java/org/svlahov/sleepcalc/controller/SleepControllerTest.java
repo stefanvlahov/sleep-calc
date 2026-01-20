@@ -72,7 +72,8 @@ class SleepControllerTest {
                 sleepInput.setTimeSlept("8:30");
                 sleepInput.setDate(testDate); // Add the date
 
-                when(sleepService.recordSleep(eq("8:30"), eq(testDate))).thenReturn(new SleepState(0.0, 1.0));
+                when(sleepService.recordSleep(eq("8:30"), eq(testDate.minusDays(1))))
+                                .thenReturn(new SleepState(0.0, 1.0));
 
                 mockMvc.perform(post("/api/sleep")
                                 .contentType(requireNonNull(MediaType.APPLICATION_JSON))
@@ -82,7 +83,7 @@ class SleepControllerTest {
                                 .andExpect(jsonPath("$.sleepDebt", requireNonNull(is(0.0))))
                                 .andExpect(jsonPath("$.sleepSurplus", requireNonNull(is(1.0))));
 
-                Mockito.verify(sleepService).recordSleep(eq("8:30"), eq(testDate));
+                Mockito.verify(sleepService).recordSleep(eq("8:30"), eq(testDate.minusDays(1)));
         }
 
         @Test

@@ -33,14 +33,13 @@ public class SleepController {
     @GetMapping("/history/range")
     public List<SleepHistoryEntry> getSleepHistoryRange(
             @RequestParam("from") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-            @RequestParam("to") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
-    ) {
+            @RequestParam("to") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
         return sleepService.getSleepHistory(from, to);
     }
 
     @PostMapping
     public SleepState recordSleep(@RequestBody SleepInput sleepInput) {
-        return sleepService.recordSleep(sleepInput.getTimeSlept(), sleepInput.getDate());
+        return sleepService.recordSleep(sleepInput.getTimeSlept(), sleepInput.getDate().minusDays(1));
     }
 
     public static class SleepInput {
