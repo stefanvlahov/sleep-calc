@@ -32,7 +32,8 @@ public class SleepServiceImpl implements SleepService {
     private static final BigDecimal ZERO = BigDecimal.ZERO;
     private static final BigDecimal ONE = BigDecimal.ONE;
 
-    private record CumulativeState(BigDecimal sleepDebt, BigDecimal sleepSurplus) {}
+    private record CumulativeState(BigDecimal sleepDebt, BigDecimal sleepSurplus) {
+    }
 
     // Current state
     private final SleepDataRepository sleepDataRepository;
@@ -47,7 +48,8 @@ public class SleepServiceImpl implements SleepService {
     public List<SleepHistoryEntry> getSleepHistory() {
         User currentUser = getCurrentUser();
 
-        List<SleepData> recentEntries = sleepDataRepository.findTop5ByUser_UsernameOrderBySleepDateDesc(currentUser.getUsername());
+        List<SleepData> recentEntries = sleepDataRepository
+                .findTop5ByUser_UsernameOrderBySleepDateDesc(currentUser.getUsername());
 
         return recentEntries.stream()
                 .map(this::mapToHistoryEntry)
@@ -55,14 +57,16 @@ public class SleepServiceImpl implements SleepService {
     }
 
     private SleepHistoryEntry mapToHistoryEntry(SleepData data) {
-        return new SleepHistoryEntry(data.getSleepDate(), formatDebtValue(data.getHoursSlept()), formatDebtValue(data.getSleepDebt()), formatDebtValue(data.getSleepSurplus()));
+        return new SleepHistoryEntry(data.getSleepDate(), formatDebtValue(data.getHoursSlept()),
+                formatDebtValue(data.getSleepDebt()), formatDebtValue(data.getSleepSurplus()));
     }
 
     @Override
     public SleepState getCurrentSleepState() {
         User currentUser = getCurrentUser();
         return sleepDataRepository.findTopByUser_UsernameOrderBySleepDateDesc(currentUser.getUsername())
-                .map(data -> new SleepState(formatDebtValue(data.getSleepDebt()), formatDebtValue(data.getSleepSurplus())))
+                .map(data -> new SleepState(formatDebtValue(data.getSleepDebt()),
+                        formatDebtValue(data.getSleepSurplus())))
                 .orElse(new SleepState(0.0, 0.0));
     }
 
@@ -71,26 +75,63 @@ public class SleepServiceImpl implements SleepService {
         User currentUser = getCurrentUser();
         BigDecimal hoursSleptDecimal = parseTimeSleptToDecimal(timeSlept);
 
-        Optional<SleepData> latestEntry = sleepDataRepository.findTopByUser_UsernameOrderBySleepDateDesc(currentUser.getUsername());
-        CumulativeState previousState = latestEntry
+        // 1. Find the state immediately before the date we are inserting/updating
+        Optional<SleepData> predecessor = sleepDataRepository
+                .findTopByUser_UsernameAndSleepDateLessThanOrderBySleepDateDesc(currentUser.getUsername(), date);
+
+        CumulativeState previousState = predecessor
                 .map(data -> new CumulativeState(data.getSleepDebt(), data.getSleepSurplus()))
                 .orElse(new CumulativeState(ZERO, ZERO));
 
-        BigDecimal sleepDifference = hoursSleptDecimal.subtract(TARGET_SLEEP_HOURS);
-        CumulativeState newState;
+        // 2. Calculate the state for the new/updated entry
+        CumulativeState newState = calculateNewState(previousState, hoursSleptDecimal);
+
+        // 3. Save or Update the entry for 'date'
+        Optional<SleepData> existingEntry = sleepDataRepository
+                .findByUser_UsernameAndSleepDate(currentUser.getUsername(), date);
+        SleepData sleepDataToSave;
+
+        if (existingEntry.isPresent()) {
+            sleepDataToSave = existingEntry.get();
+            sleepDataToSave.setHoursSlept(hoursSleptDecimal);
+            sleepDataToSave.setSleepDebt(newState.sleepDebt());
+            sleepDataToSave.setSleepSurplus(newState.sleepSurplus());
+        } else {
+            sleepDataToSave = new SleepData(currentUser, date, hoursSleptDecimal, newState.sleepDebt(),
+                    newState.sleepSurplus());
+        }
+        SleepData savedData = sleepDataRepository.save(sleepDataToSave);
+
+        // 4. Recalculate all subsequent entries
+        recalculateSubsequentEntries(currentUser.getUsername(), date, newState);
+
+        return new SleepState(formatDebtValue(savedData.getSleepDebt()), formatDebtValue(savedData.getSleepSurplus()));
+    }
+
+    private void recalculateSubsequentEntries(String username, LocalDate date, CumulativeState startingState) {
+        List<SleepData> subsequentEntries = sleepDataRepository
+                .findByUser_UsernameAndSleepDateGreaterThanOrderBySleepDateAsc(username, date);
+
+        CumulativeState currentState = startingState;
+
+        for (SleepData entry : subsequentEntries) {
+            currentState = calculateNewState(currentState, entry.getHoursSlept());
+            entry.setSleepDebt(currentState.sleepDebt());
+            entry.setSleepSurplus(currentState.sleepSurplus());
+            sleepDataRepository.save(entry);
+        }
+    }
+
+    private CumulativeState calculateNewState(CumulativeState previousState, BigDecimal hoursSlept) {
+        BigDecimal sleepDifference = hoursSlept.subtract(TARGET_SLEEP_HOURS);
 
         if (sleepDifference.compareTo(ZERO) > 0) {
-            newState = applyExtraSleep(previousState, sleepDifference);
+            return applyExtraSleep(previousState, sleepDifference);
         } else if (sleepDifference.compareTo(ZERO) < 0) {
-            newState = applySleepShortfall(previousState, sleepDifference.negate());
+            return applySleepShortfall(previousState, sleepDifference.negate());
         } else {
-            newState = previousState;
+            return previousState;
         }
-
-        SleepData newSleepEntry = new SleepData(currentUser, date, hoursSleptDecimal, newState.sleepDebt(), newState.sleepSurplus());
-
-        SleepData savedData = sleepDataRepository.save(newSleepEntry);
-        return new SleepState(formatDebtValue(savedData.getSleepDebt()), formatDebtValue(savedData.getSleepSurplus()));
     }
 
     @Override
@@ -98,8 +139,7 @@ public class SleepServiceImpl implements SleepService {
         User currentUser = getCurrentUser();
 
         List<SleepData> entries = sleepDataRepository.findByUser_UsernameAndSleepDateBetween(
-                currentUser.getUsername(), from, to
-        );
+                currentUser.getUsername(), from, to);
 
         return entries.stream()
                 .map(this::mapToHistoryEntry)
@@ -117,7 +157,8 @@ public class SleepServiceImpl implements SleepService {
             username = principal.toString();
         }
 
-        return userRepository.findByUsername(username).orElseThrow(() -> new IllegalStateException("Authenticated user not found in database"));
+        return userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalStateException("Authenticated user not found in database"));
 
     }
 
@@ -177,7 +218,9 @@ public class SleepServiceImpl implements SleepService {
         BigDecimal actualDebtPaid = debtReductionAmount.min(currentDebt);
         BigDecimal newDebt = currentDebt.subtract(actualDebtPaid);
 
-        BigDecimal sleepPowerUsed = (recoveryFactor.compareTo(ZERO) > 0) ? actualDebtPaid.divide(recoveryFactor, 4, RoundingMode.HALF_UP) : ZERO;
+        BigDecimal sleepPowerUsed = (recoveryFactor.compareTo(ZERO) > 0)
+                ? actualDebtPaid.divide(recoveryFactor, 4, RoundingMode.HALF_UP)
+                : ZERO;
         BigDecimal surplusToAdd = extraSleep.subtract(sleepPowerUsed).max(ZERO);
 
         BigDecimal newSurplus = currentSurplus.add(surplusToAdd);
