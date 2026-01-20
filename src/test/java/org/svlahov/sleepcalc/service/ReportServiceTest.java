@@ -17,6 +17,7 @@ import org.svlahov.sleepcalc.repository.SleepDataRepository;
 import org.svlahov.sleepcalc.repository.UserRepository;
 
 import java.math.BigDecimal;
+
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
