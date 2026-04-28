@@ -39,7 +39,7 @@ public class SleepController {
 
     @PostMapping
     public SleepState recordSleep(@RequestBody SleepInput sleepInput) {
-        return sleepService.recordSleep(sleepInput.getTimeSlept(), sleepInput.getDate().minusDays(1));
+        return sleepService.recordSleep(sleepInput.getTimeSlept(), sleepInput.getDate());
     }
 
     public static class SleepInput {
