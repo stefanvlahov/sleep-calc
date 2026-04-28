@@ -48,6 +48,24 @@ public class JwtService {
         return (username != null && username.equals(userDetails.getUsername()));
     }
 
+    public String generatePasswordResetToken(String username) {
+        return Jwts.builder()
+                .subject(username)
+                .claim("type", "PASSWORD_RESET")
+                .issuedAt(new Date(System.currentTimeMillis()))
+                .expiration(new Date(System.currentTimeMillis() + 1000 * 60 * 15))
+                .signWith(getSignInKey())
+                .compact();
+    }
+
+    public String validatePasswordResetToken(String token) {
+        Claims claims = extractAllClaims(token);
+        if (claims == null || !"PASSWORD_RESET".equals(claims.get("type"))) {
+            throw new IllegalArgumentException("Invalid or expired password reset token");
+        }
+        return claims.getSubject();
+    }
+
     private Claims extractAllClaims(String token) {
         try {
             return Jwts.parser()
